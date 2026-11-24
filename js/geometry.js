@@ -1,75 +1,75 @@
-// Geometría de engranajes cilíndricos de evolvente (dentado recto exterior).
-// ISO 21771 (cálculo) / ISO 53:1998 (perfil de referencia de la cremallera).
-// Funciones puras: sin acceso al DOM. Longitudes en mm, ángulos en radianes.
+// Geometria d'engranatges cilíndrics d'evolvent (dentat recte exterior).
+// ISO 21771 (càlcul) / ISO 53:1998 (perfil de referència de la cremallera).
+// Funcions pures: sense accés al DOM. Longituds en mm, angles en radiants.
 
-export const ALPHA_P = (20 * Math.PI) / 180; // ángulo de presión del perfil de referencia
+export const ALPHA_P = (20 * Math.PI) / 180; // angle de pressió del perfil de referència
 
-/** Perfiles de referencia ISO 53:1998, en múltiplos del módulo. */
-export const PERFILES = Object.freeze({
+/** Perfils de referència ISO 53:1998, en múltiples del mòdul. */
+export const PERFILS = Object.freeze({
   A: Object.freeze({ haP: 1.0, hfP: 1.25, rhoFP: 0.38 }),
   B: Object.freeze({ haP: 1.0, hfP: 1.25, rhoFP: 0.30 }),
   C: Object.freeze({ haP: 1.0, hfP: 1.25, rhoFP: 0.25 }),
   D: Object.freeze({ haP: 1.0, hfP: 1.4, rhoFP: 0.39 }),
 });
 
-export const gradosARad = (g) => (g * Math.PI) / 180;
-export const radAGrados = (r) => (r * 180) / Math.PI;
+export const grausARad = (g) => (g * Math.PI) / 180;
+export const radAGraus = (r) => (r * 180) / Math.PI;
 
-/** Función evolvente: inv α = tan α − α */
+/** Funció evolvent: inv α = tan α − α */
 export const inv = (a) => Math.tan(a) - a;
 
-/** Espesor del diente sobre el diámetro de referencia: s = m (π/2 + 2 x tan α) */
-export const espesorReferencia = (m, x, alpha = ALPHA_P) =>
+/** Gruix de la dent sobre el diàmetre de referència: s = m (π/2 + 2 x tan α) */
+export const gruixReferencia = (m, x, alpha = ALPHA_P) =>
   m * (Math.PI / 2 + 2 * x * Math.tan(alpha));
 
-/** Espesor en la base: s_b = m cos α (π/2 + 2 x tan α + z inv α) */
-export const espesorBase = (z, m, x, alpha = ALPHA_P) =>
+/** Gruix a la base: s_b = m cos α (π/2 + 2 x tan α + z inv α) */
+export const gruixBase = (z, m, x, alpha = ALPHA_P) =>
   m * Math.cos(alpha) * (Math.PI / 2 + 2 * x * Math.tan(alpha) + z * inv(alpha));
 
-/** Suma de desplazamientos (x1+x2) que da juego nulo a la distancia de funcionamiento. */
-export function sumaDesplazamientos(z1, z2, alphaW, alpha = ALPHA_P) {
+/** Suma de desplaçaments (x1+x2) que dona joc nul a la distància de funcionament. */
+export function sumaDesplacaments(z1, z2, alphaW, alpha = ALPHA_P) {
   return ((inv(alphaW) - inv(alpha)) * (z1 + z2)) / (2 * Math.tan(alpha));
 }
 
 /**
- * Reparte la suma de desplazamientos para que s_b1 / s_b2 = relacion.
- * s_bi ∝ A_i + 2 x_i tan α, con A_i = π/2 + z_i inv α.
+ * Reparteix la suma de desplaçaments perquè s_b1 / s_b2 = relacio.
+ * s_bi ∝ A_i + 2 x_i tan α, amb A_i = π/2 + z_i inv α.
  */
-export function repartirDesplazamientos(z1, z2, suma, relacion, alpha = ALPHA_P) {
+export function repartirDesplacaments(z1, z2, suma, relacio, alpha = ALPHA_P) {
   const t = Math.tan(alpha);
   const A1 = Math.PI / 2 + z1 * inv(alpha);
   const A2 = Math.PI / 2 + z2 * inv(alpha);
-  const x1 = (relacion * A2 + 2 * relacion * t * suma - A1) / (2 * t * (1 + relacion));
+  const x1 = (relacio * A2 + 2 * relacio * t * suma - A1) / (2 * t * (1 + relacio));
   return [x1, suma - x1];
 }
 
-/** Desplazamiento mínimo sin socavado para la cremallera ISO 53 (con redondeo de cabeza). */
-export function desplazamientoMinimo(z, perfil, alpha = ALPHA_P) {
-  const P = PERFILES[perfil];
+/** Desplaçament mínim sense soscavament per a la cremallera ISO 53 (amb arrodoniment de cap). */
+export function desplacamentMinim(z, perfil, alpha = ALPHA_P) {
+  const P = PERFILS[perfil];
   return P.hfP - P.rhoFP * (1 - Math.sin(alpha)) - (z * Math.sin(alpha) ** 2) / 2;
 }
 
 /**
- * Datos de la cremallera generadora en su propio sistema (u, v):
- * u a lo largo de la línea de rodadura, v perpendicular (positivo hacia fuera del engranaje),
- * v = 0 en la línea de rodadura (tangente a la circunferencia de referencia).
- * El hueco de la cremallera (donde queda el diente generado) está centrado en u = 0;
- * el diente de la cremallera que talla el hueco del engranaje está centrado en u = π m / 2.
+ * Dades de la cremallera generadora en el seu propi sistema (u, v):
+ * u al llarg de la línia de rodolament, v perpendicular (positiu cap enfora de l'engranatge),
+ * v = 0 a la línia de rodolament (tangent a la circumferència de referència).
+ * El buit de la cremallera (on queda la dent generada) està centrat a u = 0;
+ * la dent de la cremallera que talla el buit de l'engranatge està centrada a u = π m / 2.
  */
-export function datosCremallera(m, x, perfil, alpha = ALPHA_P) {
-  const P = PERFILES[perfil];
+export function dadesCremallera(m, x, perfil, alpha = ALPHA_P) {
+  const P = PERFILS[perfil];
   const hfP = P.hfP * m;
   const rho = P.rhoFP * m;
-  const vT = x * m - hfP; // línea de cabeza de la cremallera (talla el fondo)
-  const vC = vT + rho; // centro del redondeo de cabeza
+  const vT = x * m - hfP; // línia de cap de la cremallera (talla el fons)
+  const vC = vT + rho; // centre de l'arrodoniment de cap
   const uC = (Math.PI * m) / 4 + (hfP - rho) * Math.tan(alpha) + rho / Math.cos(alpha);
-  const vF = vC - rho * Math.sin(alpha); // final del tramo recto del flanco
+  const vF = vC - rho * Math.sin(alpha); // final del tram recte del flanc
   return { m, x, alpha, hfP, rho, vT, vC, uC, vF };
 }
 
 /**
- * Punto del flanco derecho de la cremallera (frontera izquierda de su diente) en función de v.
- * Devuelve u, o null si v está por debajo de la cabeza de la cremallera.
+ * Punt del flanc dret de la cremallera (frontera esquerra de la seva dent) en funció de v.
+ * Retorna u, o null si v és per sota del cap de la cremallera.
  */
 export function fronteraCremallera(v, cr) {
   if (v < cr.vT) return null;
@@ -79,24 +79,25 @@ export function fronteraCremallera(v, cr) {
 }
 
 /**
- * Punto del perfil generado por el redondeo de cabeza de la cremallera (trocoide equidistante)
- * para el ángulo de rodadura φ. Devuelve coordenadas polares en el sistema de la rueda:
- * R (radio) y beta (ángulo desde el eje del diente, positivo hacia el flanco derecho).
+ * Punt de la trocoide equidistant que genera l'arrodoniment de cap de la cremallera
+ * per a l'angle de rodolament φ (referència analítica; el perfil es talla a generarFlanc).
+ * Retorna coordenades polars en el sistema de la roda:
+ * R (radi) i beta (angle des de l'eix de la dent, positiu cap al flanc dret).
  */
-export function puntoTrocoide(phi, r, cr) {
-  // Sistema fijo: centro de la rueda en el origen, línea de rodadura en Y = r.
-  // La rueda gira φ (horario) y la cremallera avanza r φ.
+export function puntTrocoide(phi, r, cr) {
+  // Sistema fix: centre de la roda a l'origen, línia de rodolament a Y = r.
+  // La roda gira φ (sentit horari) i la cremallera avança r φ.
   const Xc = cr.uC + r * phi;
   const Yc = r + cr.vC;
-  const dx = -Xc; // vector hacia el polo de rodadura I = (0, r)
+  const dx = -Xc; // vector cap al pol de rodolament I = (0, r)
   const dy = r - Yc;
-  const len = Math.hypot(dx, dy);
+  const llarg = Math.hypot(dx, dy);
   let nx = 0;
   let ny = -1;
-  if (len > 1e-14) {
-    nx = dx / len;
-    ny = dy / len;
-    // la normal exterior del redondeo en el contacto apunta hacia el engranaje
+  if (llarg > 1e-14) {
+    nx = dx / llarg;
+    ny = dy / llarg;
+    // la normal exterior de l'arrodoniment al contacte apunta cap a l'engranatge
     if (ny > 0 || (ny === 0 && nx > 0)) {
       nx = -nx;
       ny = -ny;
@@ -104,7 +105,7 @@ export function puntoTrocoide(phi, r, cr) {
   }
   const Qx = Xc + cr.rho * nx;
   const Qy = Yc + cr.rho * ny;
-  // al sistema de la rueda: girar φ en sentido antihorario
+  // al sistema de la roda: girar φ en sentit antihorari
   const c = Math.cos(phi);
   const s = Math.sin(phi);
   const gx = Qx * c - Qy * s;
@@ -112,35 +113,35 @@ export function puntoTrocoide(phi, r, cr) {
   return { R: Math.hypot(gx, gy), beta: Math.atan2(gx, gy) };
 }
 
-/** Semiángulo de espesor de la evolvente en el radio R (R ≥ rb). */
-export function semiAnguloEvolvente(R, rueda) {
-  const aR = Math.acos(Math.min(1, rueda.db / (2 * R)));
-  return rueda.s / rueda.d + inv(rueda.alpha) - inv(aR);
+/** Semiangle de gruix de l'evolvent al radi R (R ≥ rb). */
+export function semiAngleEvolvent(R, roda) {
+  const aR = Math.acos(Math.min(1, roda.db / (2 * R)));
+  return roda.s / roda.d + inv(roda.alpha) - inv(aR);
 }
 
 /**
- * Contorno de un diente de la herramienta (cremallera ISO 53) en coordenadas (u, v):
- * mitad izquierda, desde arriba del flanco hasta el centro de la cabeza (u = π m / 2).
- * Es la mitad que talla el flanco derecho del diente 0 del engranaje.
+ * Contorn d'una dent de l'eina (cremallera ISO 53) en coordenades (u, v):
+ * meitat esquerra, des de dalt del flanc fins al centre del cap (u = π m / 2).
+ * És la meitat que talla el flanc dret de la dent 0 de l'engranatge.
  */
-export function contornoHerramienta(rueda, { nRedondeo = 64 } = {}) {
-  const { m, x, alpha, perfil } = rueda;
-  const cr = datosCremallera(m, x, perfil, alpha);
-  const r = rueda.d / 2;
-  const vTop = rueda.da / 2 - r + 0.5 * m; // la herramienta sobrepasa la cabeza del bruto
-  const flanco = (v) => (Math.PI * m) / 4 + (x * m - v) * Math.tan(alpha);
-  const pts = [[flanco(vTop), vTop]];
-  // redondeo de cabeza: normal desde (−cos α, −sin α) hasta (0, −1)
-  for (let i = 0; i <= nRedondeo; i++) {
-    const th = Math.PI + alpha + ((Math.PI / 2 - alpha) * i) / nRedondeo;
+export function contornEina(roda, { nArrodoniment = 64 } = {}) {
+  const { m, x, alpha, perfil } = roda;
+  const cr = dadesCremallera(m, x, perfil, alpha);
+  const r = roda.d / 2;
+  const vTop = roda.da / 2 - r + 0.5 * m; // l'eina sobrepassa el cap de la peça en brut
+  const flanc = (v) => (Math.PI * m) / 4 + (x * m - v) * Math.tan(alpha);
+  const pts = [[flanc(vTop), vTop]];
+  // arrodoniment de cap: normal des de (−cos α, −sin α) fins a (0, −1)
+  for (let i = 0; i <= nArrodoniment; i++) {
+    const th = Math.PI + alpha + ((Math.PI / 2 - alpha) * i) / nArrodoniment;
     pts.push([cr.uC + cr.rho * Math.cos(th), cr.vC + cr.rho * Math.sin(th)]);
   }
   pts.push([(Math.PI * m) / 2, cr.vT]);
   return { pts, cr, vTop };
 }
 
-/** Herramienta colocada para el ángulo de rodadura φ, en el sistema de la rueda. */
-export function posicionHerramienta(phi, r, pts) {
+/** Eina col·locada per a l'angle de rodolament φ, en el sistema de la roda. */
+export function posicioEina(phi, r, pts) {
   const c = Math.cos(phi);
   const s = Math.sin(phi);
   return pts.map(([u, v]) => {
@@ -151,39 +152,39 @@ export function posicionHerramienta(phi, r, pts) {
 }
 
 /**
- * Talla el flanco derecho de un diente: la cremallera rueda sobre la circunferencia de
- * referencia (desplazada x·m) y el perfil es la traza que deja la herramienta sobre el bruto
- * (Ø d_a). Para cada radio R se toma el ángulo mínimo alcanzado por la herramienta en todas
- * sus posiciones: lo que queda es el material que la herramienta nunca toca.
- * Devuelve puntos {R, beta} de pie a cabeza (beta desde el eje del diente).
+ * Talla el flanc dret d'una dent: la cremallera rodola sobre la circumferència de
+ * referència (desplaçada x·m) i el perfil és la traça que deixa l'eina sobre la peça en brut
+ * (Ø d_a). Per a cada radi R es pren l'angle mínim que assoleix l'eina en totes les seves
+ * posicions: el que queda és el material que l'eina no toca mai.
+ * Retorna punts {R, beta} de peu a cap (beta des de l'eix de la dent).
  */
-export function generarFlanco(rueda, { nRadios = 200, pasoRodadura = rueda.m / 100 } = {}) {
-  const { m, alpha } = rueda;
-  const r = rueda.d / 2;
-  const rb = rueda.db / 2;
-  const rf = rueda.df / 2;
-  const ra = rueda.da / 2;
-  if (ra <= rf) throw new Error('El diámetro de cabeza no supera al de fondo.');
-  const { pts, cr, vTop } = contornoHerramienta(rueda);
+export function generarFlanc(roda, { nRadis = 200, pasRodolament = roda.m / 100 } = {}) {
+  const { m, alpha } = roda;
+  const r = roda.d / 2;
+  const rb = roda.db / 2;
+  const rf = roda.df / 2;
+  const ra = roda.da / 2;
+  if (ra <= rf) throw new Error('El diàmetre de cap no supera el de fons.');
+  const { pts, cr, vTop } = contornEina(roda);
 
-  // rejilla de radios, más densa junto al fondo
-  const Rs = new Float64Array(nRadios + 1);
-  for (let i = 0; i <= nRadios; i++) Rs[i] = rf + (ra - rf) * (i / nRadios) ** 2;
-  const indice = (R) => nRadios * Math.sqrt(Math.max(0, (R - rf) / (ra - rf)));
-  const mejor = new Float64Array(nRadios + 1).fill(Infinity);
+  // graella de radis, més densa a prop del fons
+  const Rs = new Float64Array(nRadis + 1);
+  for (let i = 0; i <= nRadis; i++) Rs[i] = rf + (ra - rf) * (i / nRadis) ** 2;
+  const index = (R) => nRadis * Math.sqrt(Math.max(0, (R - rf) / (ra - rf)));
+  const millor = new Float64Array(nRadis + 1).fill(Infinity);
 
-  // recorrido de la herramienta mientras toca el bruto
+  // recorregut de l'eina mentre toca la peça en brut
   const W = Math.sqrt(ra * ra - rf * rf);
   const H = W + (Math.PI * m) / 2 + (vTop - cr.vT) * Math.tan(alpha);
   const uIni = -H - (Math.PI * m) / 2;
-  const uFin = H - (Math.PI * m) / 2;
-  const nPasos = Math.ceil((uFin - uIni) / pasoRodadura);
+  const uFi = H - (Math.PI * m) / 2;
+  const nPassos = Math.ceil((uFi - uIni) / pasRodolament);
   const n = pts.length;
   const gx = new Float64Array(n);
   const gy = new Float64Array(n);
 
-  for (let k = 0; k <= nPasos; k++) {
-    const phi = (uIni + ((uFin - uIni) * k) / nPasos) / r;
+  for (let k = 0; k <= nPassos; k++) {
+    const phi = (uIni + ((uFi - uIni) * k) / nPassos) / r;
     const c = Math.cos(phi);
     const s = Math.sin(phi);
     for (let j = 0; j < n; j++) {
@@ -205,225 +206,225 @@ export function generarFlanco(rueda, { nRadios = 200, pasoRodadura = rueda.m / 1
       const Rmin = Math.hypot(ax + t0 * dx, ay + t0 * dy);
       const Rmax = Math.sqrt(Math.max(A2, B2));
       if (Rmax < rf || Rmin > ra) continue;
-      const i0 = Math.max(1, Math.ceil(indice(Rmin)));
-      const i1 = Math.min(nRadios, Math.floor(indice(Rmax)));
+      const i0 = Math.max(1, Math.ceil(index(Rmin)));
+      const i1 = Math.min(nRadis, Math.floor(index(Rmax)));
       for (let i = i0; i <= i1; i++) {
         const R = Rs[i];
         const disc = b * b - a2 * (A2 - R * R);
         if (disc < 0) continue;
-        const sq = Math.sqrt(disc);
-        for (const t of [(-b - sq) / a2, (-b + sq) / a2]) {
+        const arrel = Math.sqrt(disc);
+        for (const t of [(-b - arrel) / a2, (-b + arrel) / a2]) {
           if (t < 0 || t > 1) continue;
           const beta = Math.atan2(ax + t * dx, ay + t * dy);
-          if (beta < mejor[i]) mejor[i] = beta;
+          if (beta < millor[i]) millor[i] = beta;
         }
       }
     }
   }
 
-  const puntos = [];
-  let socavaDiente = false;
-  let puntiagudo = false;
-  for (let i = 1; i <= nRadios; i++) {
-    let beta = mejor[i];
+  const punts = [];
+  let soscavaDent = false;
+  let punxegut = false;
+  for (let i = 1; i <= nRadis; i++) {
+    let beta = millor[i];
     if (!Number.isFinite(beta)) continue;
     if (beta <= 0) {
-      if (Rs[i] > rb && puntos.length) {
-        // punta del diente: interpolar el radio donde el espesor se anula
-        const p = puntos[puntos.length - 1];
+      if (Rs[i] > rb && punts.length) {
+        // punta de la dent: interpolar el radi on el gruix s'anul·la
+        const p = punts[punts.length - 1];
         const R0 = p.R + ((Rs[i] - p.R) * p.beta) / (p.beta - beta);
-        puntos.push({ R: R0, beta: 0 });
-        puntiagudo = true;
+        punts.push({ R: R0, beta: 0 });
+        punxegut = true;
         break;
       }
-      socavaDiente = true;
+      soscavaDent = true;
       beta = 0;
     }
-    if (!puntos.length) puntos.push({ R: rf, beta }); // arranque en el fondo
-    puntos.push({ R: Rs[i], beta });
+    if (!punts.length) punts.push({ R: rf, beta }); // inici al fons
+    punts.push({ R: Rs[i], beta });
   }
-  if (puntos.length < 3) throw new Error('La herramienta no deja diente.');
-  const top = puntos[puntos.length - 1];
+  if (punts.length < 3) throw new Error("L'eina no deixa dent.");
+  const cim = punts[punts.length - 1];
 
-  // diámetro de forma del pie (comienzo de la evolvente)
+  // diàmetre de forma del peu (començament de l'evolvent)
   let rForma;
   const L = r * Math.sin(alpha) + cr.vF / Math.sin(alpha);
   if (L >= 0) {
     rForma = Math.hypot(rb, L);
   } else {
-    // socavado: punto más bajo en que la traza sigue coincidiendo con la evolvente
-    rForma = top.R;
+    // soscavament: punt més baix on la traça encara coincideix amb l'evolvent
+    rForma = cim.R;
     const tol = 2e-3 * m;
-    for (let i = puntos.length - 1; i >= 0; i--) {
-      const p = puntos[i];
-      if (p.R < rb || p.R * Math.abs(p.beta - semiAnguloEvolvente(p.R, rueda)) > tol) break;
+    for (let i = punts.length - 1; i >= 0; i--) {
+      const p = punts[i];
+      if (p.R < rb || p.R * Math.abs(p.beta - semiAngleEvolvent(p.R, roda)) > tol) break;
       rForma = p.R;
     }
   }
 
   return {
-    puntos,
-    rTop: top.R,
-    betaTop: top.beta,
-    rRaiz: rf,
-    betaRaiz: puntos[0].beta,
+    punts,
+    rCap: cim.R,
+    betaCap: cim.beta,
+    rArrel: rf,
+    betaArrel: punts[0].beta,
     rForma,
-    puntiagudo,
-    socavaDiente,
+    punxegut,
+    soscavaDent,
   };
 }
 
 /**
- * Contorno cerrado de la rueda completa, diente 0 centrado en +Y.
- * Devuelve Float64Array [x0, y0, x1, y1, ...] en mm.
+ * Contorn tancat de la roda completa, dent 0 centrada a +Y.
+ * Retorna Float64Array [x0, y0, x1, y1, ...] en mm.
  */
-export function contornoRueda(flanco, z, { nCabeza = 6, nFondo = 6 } = {}) {
-  const paso = (2 * Math.PI) / z;
-  const derecha = [];
-  for (let i = 0; i <= nCabeza; i++) derecha.push([flanco.rTop, (flanco.betaTop * i) / nCabeza]);
-  for (let i = flanco.puntos.length - 2; i >= 0; i--) {
-    const p = flanco.puntos[i];
-    derecha.push([p.R, p.beta]);
+export function contornRoda(flanc, z, { nCap = 6, nFons = 6 } = {}) {
+  const pas = (2 * Math.PI) / z;
+  const dreta = [];
+  for (let i = 0; i <= nCap; i++) dreta.push([flanc.rCap, (flanc.betaCap * i) / nCap]);
+  for (let i = flanc.punts.length - 2; i >= 0; i--) {
+    const p = flanc.punts[i];
+    dreta.push([p.R, p.beta]);
   }
-  const bFondo = Math.min(flanco.betaRaiz, paso / 2);
-  for (let i = 1; i <= nFondo; i++) {
-    derecha.push([flanco.rRaiz, bFondo + ((paso / 2 - bFondo) * i) / nFondo]);
+  const bFons = Math.min(flanc.betaArrel, pas / 2);
+  for (let i = 1; i <= nFons; i++) {
+    dreta.push([flanc.rArrel, bFons + ((pas / 2 - bFons) * i) / nFons]);
   }
-  // diente: desde −paso/2 hasta +paso/2
-  const diente = [];
-  for (let i = derecha.length - 1; i >= 1; i--) diente.push([derecha[i][0], -derecha[i][1]]);
-  for (const p of derecha) diente.push(p);
+  // dent: des de −pas/2 fins a +pas/2
+  const dent = [];
+  for (let i = dreta.length - 1; i >= 1; i--) dent.push([dreta[i][0], -dreta[i][1]]);
+  for (const p of dreta) dent.push(p);
 
-  const porDiente = diente.length - 1; // el último coincide con el primero del siguiente
-  const out = new Float64Array(z * porDiente * 2);
+  const perDent = dent.length - 1; // l'últim coincideix amb el primer de la següent
+  const sortida = new Float64Array(z * perDent * 2);
   let k = 0;
   for (let j = 0; j < z; j++) {
-    const giro = j * paso;
-    for (let i = 0; i < porDiente; i++) {
-      const [R, b] = diente[i];
-      out[k++] = R * Math.sin(b + giro);
-      out[k++] = R * Math.cos(b + giro);
+    const gir = j * pas;
+    for (let i = 0; i < perDent; i++) {
+      const [R, b] = dent[i];
+      sortida[k++] = R * Math.sin(b + gir);
+      sortida[k++] = R * Math.cos(b + gir);
     }
   }
-  return out;
+  return sortida;
 }
 
-function validar({ z1, z2, m, a, perfil, relacion }) {
-  const enteros = [
+function validar({ z1, z2, m, a, perfil, relacio }) {
+  const enters = [
     ['z1', z1],
     ['z2', z2],
   ];
-  for (const [n, z] of enteros) {
-    if (!Number.isInteger(z) || z < 5) throw new Error(`${n} debe ser un entero ≥ 5.`);
+  for (const [n, z] of enters) {
+    if (!Number.isInteger(z) || z < 5) throw new Error(`${n} ha de ser un enter ≥ 5.`);
   }
-  if (!(m > 0)) throw new Error('El módulo debe ser positivo.');
-  if (!(a > 0)) throw new Error('La distancia entre centros debe ser positiva.');
-  if (!PERFILES[perfil]) throw new Error(`Perfil desconocido: ${perfil}`);
-  if (!(relacion > 0)) throw new Error('La relación de espesores debe ser positiva.');
+  if (!(m > 0)) throw new Error('El mòdul ha de ser positiu.');
+  if (!(a > 0)) throw new Error('La distància entre centres ha de ser positiva.');
+  if (!PERFILS[perfil]) throw new Error(`Perfil desconegut: ${perfil}`);
+  if (!(relacio > 0)) throw new Error('La relació de gruixos ha de ser positiva.');
 }
 
-function calcularRueda(z, x, m, alpha, alphaW, k, perfil) {
-  const P = PERFILES[perfil];
+function calcularRoda(z, x, m, alpha, alphaW, k, perfil) {
+  const P = PERFILS[perfil];
   const d = z * m;
   const db = d * Math.cos(alpha);
   const da = d + 2 * m * (P.haP + x + k);
   const df = d - 2 * m * (P.hfP - x);
-  const s = espesorReferencia(m, x, alpha);
+  const s = gruixReferencia(m, x, alpha);
   const sb = db * (s / d + inv(alpha));
   const dw = db / Math.cos(alphaW);
   const sw = dw * (s / d + inv(alpha) - inv(alphaW));
   const alphaA = Math.acos(Math.min(1, db / da));
   const sa = da * (s / d + inv(alpha) - inv(alphaA));
-  const xMin = desplazamientoMinimo(z, perfil, alpha);
+  const xMin = desplacamentMinim(z, perfil, alpha);
   return {
     z, m, x, alpha, perfil, d, db, da, df, dw, s, sb, sw, sa, alphaA, xMin,
-    socavado: x < xMin - 1e-12,
+    soscavat: x < xMin - 1e-12,
   };
 }
 
 /**
- * Cálculo de la pareja piñón/rueda.
- * @param {{z1:number,z2:number,m:number,a:number,perfil?:string,relacion?:number,alpha?:number}} p
- *   relacion = s_b1 / s_b2 (espesor en la base piñón / rueda)
+ * Càlcul de la parella pinyó/roda.
+ * @param {{z1:number,z2:number,m:number,a:number,perfil?:string,relacio?:number,alpha?:number}} p
+ *   relacio = s_b1 / s_b2 (gruix a la base pinyó / roda)
  */
-export function calcularPareja({ z1, z2, m, a, perfil = 'A', relacion = 1, alpha = ALPHA_P }) {
-  validar({ z1, z2, m, a, perfil, relacion });
+export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha = ALPHA_P }) {
+  validar({ z1, z2, m, a, perfil, relacio });
   const a0 = (m * (z1 + z2)) / 2;
   const cosAw = (a0 * Math.cos(alpha)) / a;
   if (cosAw > 1) {
     throw new Error(
-      `Distancia entre centros demasiado pequeña: debe ser mayor que ${(a0 * Math.cos(alpha)).toFixed(3)} mm.`,
+      `Distància entre centres massa petita: ha de ser més gran que ${(a0 * Math.cos(alpha)).toFixed(3)} mm.`,
     );
   }
   const alphaW = Math.acos(cosAw);
-  const sumaX = sumaDesplazamientos(z1, z2, alphaW, alpha);
-  const [x1, x2] = repartirDesplazamientos(z1, z2, sumaX, relacion, alpha);
-  const k = (a - a0) / m - sumaX; // modificación de la altura de cabeza (≤ 0)
+  const sumaX = sumaDesplacaments(z1, z2, alphaW, alpha);
+  const [x1, x2] = repartirDesplacaments(z1, z2, sumaX, relacio, alpha);
+  const k = (a - a0) / m - sumaX; // modificació de l'altura de cap (≤ 0)
 
-  const ruedas = [
-    calcularRueda(z1, x1, m, alpha, alphaW, k, perfil),
-    calcularRueda(z2, x2, m, alpha, alphaW, k, perfil),
+  const rodes = [
+    calcularRoda(z1, x1, m, alpha, alphaW, k, perfil),
+    calcularRoda(z2, x2, m, alpha, alphaW, k, perfil),
   ];
   const avisos = [];
-  for (const [i, rw] of ruedas.entries()) {
-    const nombre = i === 0 ? 'Piñón' : 'Rueda';
+  for (const [i, rw] of rodes.entries()) {
+    const nom = i === 0 ? 'Pinyó' : 'Roda';
     try {
-      rw.flanco = generarFlanco(rw);
-      rw.dNf = 2 * rw.flanco.rForma;
+      rw.flanc = generarFlanc(rw);
+      rw.dNf = 2 * rw.flanc.rForma;
     } catch (e) {
-      throw new Error(`${nombre}: ${e.message}`);
+      throw new Error(`${nom}: ${e.message}`);
     }
-    if (rw.flanco.socavaDiente) avisos.push({ nivel: 'error', texto: `${nombre}: el socavado destruye el diente.` });
-    else if (rw.socavado) avisos.push({ nivel: 'aviso', texto: `${nombre}: socavado (x < x_min = ${rw.xMin.toFixed(3)}).` });
-    if (rw.flanco.puntiagudo || rw.sa <= 0) avisos.push({ nivel: 'error', texto: `${nombre}: diente apuntado.` });
-    else if (rw.sa < 0.2 * m) avisos.push({ nivel: 'aviso', texto: `${nombre}: espesor en cabeza pequeño (s_a < 0,2 m).` });
+    if (rw.flanc.soscavaDent) avisos.push({ nivell: 'error', text: `${nom}: el soscavament destrueix la dent.` });
+    else if (rw.soscavat) avisos.push({ nivell: 'avis', text: `${nom}: soscavament (x < x_min = ${rw.xMin.toFixed(3)}).` });
+    if (rw.flanc.punxegut || rw.sa <= 0) avisos.push({ nivell: 'error', text: `${nom}: dent punxeguda.` });
+    else if (rw.sa < 0.2 * m) avisos.push({ nivell: 'avis', text: `${nom}: gruix al cap petit (s_a < 0,2 m).` });
   }
 
-  const [p1, p2] = ruedas;
+  const [p1, p2] = rodes;
   const rb1 = p1.db / 2;
   const rb2 = p2.db / 2;
-  const ra1 = p1.flanco.rTop;
-  const ra2 = p2.flanco.rTop;
+  const ra1 = p1.flanc.rCap;
+  const ra2 = p2.flanc.rCap;
   const T1T2 = a * Math.sin(alphaW);
-  const gE = Math.sqrt(ra1 * ra1 - rb1 * rb1); // fin de engrane, desde T1
-  const gA = T1T2 - Math.sqrt(ra2 * ra2 - rb2 * rb2); // comienzo de engrane, desde T1
+  const gE = Math.sqrt(ra1 * ra1 - rb1 * rb1); // final de l'engranament, des de T1
+  const gA = T1T2 - Math.sqrt(ra2 * ra2 - rb2 * rb2); // inici de l'engranament, des de T1
   const pb = Math.PI * m * Math.cos(alpha);
   const epsilonAlpha = (gE - gA) / pb;
 
-  // interferencia: el contacto no debe empezar por debajo del diámetro de forma
+  // interferència: el contacte no ha de començar per sota del diàmetre de forma
   const dSAP1 = gA >= 0 ? 2 * Math.hypot(rb1, gA) : NaN;
   const gA2 = T1T2 - gE;
   const dSAP2 = gA2 >= 0 ? 2 * Math.hypot(rb2, gA2) : NaN;
   p1.dSAP = dSAP1;
   p2.dSAP = dSAP2;
-  if (!(dSAP1 >= p1.dNf - 1e-9)) avisos.push({ nivel: 'error', texto: 'Interferencia en el pie del piñón.' });
-  if (!(dSAP2 >= p2.dNf - 1e-9)) avisos.push({ nivel: 'error', texto: 'Interferencia en el pie de la rueda.' });
-  if (epsilonAlpha < 1) avisos.push({ nivel: 'error', texto: `Grado de recubrimiento ε_α = ${epsilonAlpha.toFixed(3)} < 1.` });
-  else if (epsilonAlpha < 1.1) avisos.push({ nivel: 'aviso', texto: `Grado de recubrimiento bajo (ε_α = ${epsilonAlpha.toFixed(3)}).` });
+  if (!(dSAP1 >= p1.dNf - 1e-9)) avisos.push({ nivell: 'error', text: 'Interferència al peu del pinyó.' });
+  if (!(dSAP2 >= p2.dNf - 1e-9)) avisos.push({ nivell: 'error', text: 'Interferència al peu de la roda.' });
+  if (epsilonAlpha < 1) avisos.push({ nivell: 'error', text: `Grau de recobriment ε_α = ${epsilonAlpha.toFixed(3)} < 1.` });
+  else if (epsilonAlpha < 1.1) avisos.push({ nivell: 'avis', text: `Grau de recobriment baix (ε_α = ${epsilonAlpha.toFixed(3)}).` });
 
   return {
-    entrada: { z1, z2, m, a, perfil, relacion, alpha },
+    entrada: { z1, z2, m, a, perfil, relacio, alpha },
     a0,
     alphaW,
     sumaX,
     k,
-    ruedas,
+    rodes,
     gA,
     gE,
     T1T2,
     epsilonAlpha,
-    holgura: [a - ra1 - p2.df / 2, a - ra2 - p1.df / 2],
+    jocFons: [a - ra1 - p2.df / 2, a - ra2 - p1.df / 2],
     avisos,
   };
 }
 
 /**
- * Deslizamiento específico a lo largo del segmento de engrane activo.
- * g: distancia desde T1 sobre la línea de engrane (mm).
+ * Lliscament específic al llarg del segment d'engranament actiu.
+ * g: distància des de T1 sobre la línia d'engranament (mm).
  */
-export function deslizamientoEspecifico(par, n = 60) {
-  const { gA, gE, T1T2 } = par;
-  const { z1, z2 } = par.entrada;
+export function lliscamentEspecific(parella, n = 60) {
+  const { gA, gE, T1T2 } = parella;
+  const { z1, z2 } = parella.entrada;
   const g = [];
   const zeta1 = [];
   const zeta2 = [];
@@ -435,5 +436,5 @@ export function deslizamientoEspecifico(par, n = 60) {
     zeta1.push(1 - (rho2 * z1) / (rho1 * z2));
     zeta2.push(1 - (rho1 * z2) / (rho2 * z1));
   }
-  return { g, zeta1, zeta2, gC: (par.ruedas[0].dw / 2) * Math.sin(par.alphaW) };
+  return { g, zeta1, zeta2, gC: (parella.rodes[0].dw / 2) * Math.sin(parella.alphaW) };
 }

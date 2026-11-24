@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="ca">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,32 +10,32 @@
   <script type="module" src="js/ui.js"></script>
 </head>
 <body>
-  <canvas id="lienzo" aria-label="Piñón y rueda engranando"></canvas>
+  <canvas id="llenc" aria-label="Pinyó i roda engranant"></canvas>
 
-  <div class="barra" role="toolbar" aria-label="Controles de vista">
-    <button id="btn-drawer" class="boton-flotante" aria-controls="drawer" aria-expanded="false" title="Datos">☰</button>
-    <button id="btn-animar" class="boton-flotante" title="Girar / parar">▶</button>
-    <button id="btn-engrane" class="boton-flotante" title="Ampliar zona de engrane">◎</button>
-    <button id="btn-encajar" class="boton-flotante" title="Ver todo">⤢</button>
+  <div class="barra" role="toolbar" aria-label="Controls de vista">
+    <button id="btn-calaix" class="boto-flotant" aria-controls="calaix" aria-expanded="false" title="Dades">☰</button>
+    <button id="btn-animar" class="boto-flotant" title="Girar / aturar">▶</button>
+    <button id="btn-engranament" class="boto-flotant" title="Ampliar la zona d'engranament">◎</button>
+    <button id="btn-encaixar" class="boto-flotant" title="Veure-ho tot">⤢</button>
   </div>
-  <div id="estado" class="estado" role="status"></div>
+  <div id="estat" class="estat" role="status"></div>
 
-  <aside id="drawer" class="drawer" aria-hidden="true">
-    <header class="drawer-cabecera">
+  <aside id="calaix" class="calaix" aria-hidden="true">
+    <header class="calaix-capcalera">
       <h1>gearcalc</h1>
-      <button id="btn-cerrar" class="boton-icono" title="Cerrar">✕</button>
+      <button id="btn-tancar" class="boto-icona" title="Tancar">✕</button>
     </header>
 
     <section>
-      <h2>Pareja</h2>
-      <div class="rejilla">
-        <label>Dientes piñón z₁<input id="z1" type="number" min="5" step="1" inputmode="numeric"></label>
-        <label>Dientes rueda z₂<input id="z2" type="number" min="5" step="1" inputmode="numeric"></label>
-        <label>Módulo m (mm)<input id="m" type="number" min="0.05" step="0.05" inputmode="decimal"></label>
-        <label>Dist. centros a (mm)<input id="a" type="number" min="0" step="0.1" inputmode="decimal"></label>
+      <h2>Parella</h2>
+      <div class="graella">
+        <label>Dents pinyó z₁<input id="z1" type="number" min="5" step="1" inputmode="numeric"></label>
+        <label>Dents roda z₂<input id="z2" type="number" min="5" step="1" inputmode="numeric"></label>
+        <label>Mòdul m (mm)<input id="m" type="number" min="0.05" step="0.05" inputmode="decimal"></label>
+        <label>Dist. centres a (mm)<input id="a" type="number" min="0" step="0.1" inputmode="decimal"></label>
       </div>
-      <p class="nota">a₀ = <span id="a0">–</span> mm <button id="btn-a0" class="boton-texto">usar a₀</button></p>
-      <label>Perfil de referencia ISO 53
+      <p class="nota">a₀ = <span id="a0">–</span> mm <button id="btn-a0" class="boto-text">usa a₀</button></p>
+      <label>Perfil de referència ISO 53
         <select id="perfil">
           <option value="A">A — h_fP 1,25 m · ρ_fP 0,38 m</option>
           <option value="B">B — h_fP 1,25 m · ρ_fP 0,30 m</option>
@@ -47,12 +47,12 @@
     </section>
 
     <section>
-      <h2>Reparto de desplazamientos</h2>
-      <label class="fila-deslizador">
-        <span>s_b1 / s_b2 = <output id="relacion-valor">1,000</output></span>
-        <input id="relacion" type="range" min="-1" max="1" step="0.001" value="0">
+      <h2>Repartiment de desplaçaments</h2>
+      <label class="fila-lliscador">
+        <span>s_b1 / s_b2 = <output id="relacio-valor">1,000</output></span>
+        <input id="relacio" type="range" min="-1" max="1" step="0.001" value="0">
       </label>
-      <div class="extremos"><span>0,5</span><button id="btn-relacion-1" class="boton-texto">1 : 1</button><span>2</span></div>
+      <div class="extrems"><span>0,5</span><button id="btn-relacio-1" class="boto-text">1 : 1</button><span>2</span></div>
     </section>
 
     <section>
@@ -61,21 +61,21 @@
     </section>
 
     <section>
-      <h2>Resultados</h2>
-      <table class="tabla" id="tabla-pareja"></table>
-      <table class="tabla" id="tabla-ruedas"></table>
+      <h2>Resultats</h2>
+      <table class="taula" id="taula-parella"></table>
+      <table class="taula" id="taula-rodes"></table>
     </section>
 
     <section>
-      <h2>Deslizamiento específico</h2>
-      <div class="grafico"><canvas id="grafico-deslizamiento"></canvas></div>
+      <h2>Lliscament específic</h2>
+      <div class="grafic"><canvas id="grafic-lliscament"></canvas></div>
     </section>
 
     <section>
       <h2>Vista</h2>
-      <label class="check"><input type="checkbox" id="ver-primitivas" checked> Circunferencias primitivas de funcionamiento</label>
-      <label class="check"><input type="checkbox" id="ver-base" checked> Circunferencias base</label>
-      <label class="check"><input type="checkbox" id="ver-linea" checked> Línea de engrane</label>
+      <label class="casella"><input type="checkbox" id="veure-primitives" checked> Circumferències primitives de funcionament</label>
+      <label class="casella"><input type="checkbox" id="veure-base" checked> Circumferències base</label>
+      <label class="casella"><input type="checkbox" id="veure-linia" checked> Línia d'engranament</label>
     </section>
   </aside>
 </body>

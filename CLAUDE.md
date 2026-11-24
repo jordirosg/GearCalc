@@ -14,5 +14,5 @@ La disposicion en pantalla debe ser vertical (para su visualizacion en smartphon
 
 ## Convenciones
 - Unidades en mm y grados; ángulos internos en radianes
-- Interfaz en español 
+- Interfaz y código (variables, funciones, comentarios, textos) en catalán
 - Funciones de cálculo puras y separadas de la UI, con tests en tests/

@@ -378,6 +378,7 @@ function pintar(t) {
       animant,
       phi: phiAnimacio(generacio, tGeneracio),
       px,
+      pxPerMm: s * dpr,
       colors,
       camiRoda: camins[0],
       etiqueta: (x, y, text, color, alineacio = 'left') => {

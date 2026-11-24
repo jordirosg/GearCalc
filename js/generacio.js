@@ -1,10 +1,12 @@
 // Vista de generació: la cremallera ISO 53 tallant el pinyó.
 // Sistema fix: centre de la roda a l'origen, línia de rodolament a Y = r (com a geometry.js).
 // La roda gira φ en sentit horari i la cremallera avança r·φ.
+// La cremallera és periòdica (pas π·m): en cada posició només es dibuixen les dents
+// properes a la peça, desplaçades un nombre enter de passos, i així pot fer la volta sencera.
 import { contornCremallera, finestraGeneracio } from './geometry.js';
 
-const DURADA_TALL = 8; // s que dura el pas de l'eina en l'animació
-const DURADA_PAUSA = 1.5; // s amb la peça acabada abans de tornar a començar
+const DURADA_PAUSA = 2; // s amb la peça acabada abans de tornar a començar
+const MAX_POSICIONS_TALL = 600; // posicions de l'eina en una volta (límit pel cost de dibuix)
 
 function camiDe(punts, tancar) {
   const p = new Path2D();
@@ -14,45 +16,66 @@ function camiDe(punts, tancar) {
   return p;
 }
 
+function posicionsEntre(a, b, n) {
+  return Array.from({ length: n + 1 }, (_, k) => a + ((b - a) * k) / n);
+}
+
 /** Prepara els camins i les posicions de l'eina per a una roda. */
 export function prepararGeneracio(roda, { pasPosicions = roda.m / 5 } = {}) {
   const r = roda.d / 2;
   const ra = roda.da / 2;
-  const pm = Math.PI * roda.m;
+  const rf = roda.df / 2;
+  const m = roda.m;
+  const pm = Math.PI * m;
   const { phiIni, phiFi } = finestraGeneracio(roda);
-  const recorregut = Math.max(Math.abs(phiIni), Math.abs(phiFi)) * r;
-  // cremallera prou ampla per cobrir la peça durant tot el recorregut
-  const dentsEina = Math.ceil((ra + 2 * roda.m + recorregut) / pm) + 1;
-  const eina = contornCremallera(roda, { dents: dentsEina });
-  // per al ventall, només les dents properes al buit 0 (com a la figura clàssica)
+
+  // cremallera visible: cobreix l'amplada de la peça (més un pas pel desplaçament enter)
+  const eina = contornCremallera(roda, { dents: Math.ceil((ra + 2 * m) / pm) + 2, nArrodoniment: 8 });
+  // cremallera de tall: només les dents que poden tocar la peça
+  const W = Math.sqrt(Math.max(0, ra * ra - rf * rf));
+  const tall = contornCremallera(roda, { dents: Math.ceil(W / pm) + 2, nArrodoniment: 8 });
+  // ventall: les dents més properes al centre (com a la figura clàssica)
   const ventall = contornCremallera(roda, { dents: 1 });
 
-  const n = Math.max(2, Math.ceil(((phiFi - phiIni) * r) / pasPosicions));
-  const posicions = Array.from({ length: n + 1 }, (_, k) => phiIni + ((phiFi - phiIni) * k) / n);
+  // ventall fix: la finestra en què la dent central talla el buit superior
+  const nVentall = Math.max(2, Math.ceil(((phiFi - phiIni) * r) / pasPosicions));
+  const posicions = posicionsEntre(phiIni, phiFi, nVentall);
+
+  // animació: una volta sencera més la finestra, perquè tots els buits quedin acabats
+  const phiFiAnim = phiFi + 2 * Math.PI;
+  const recorregut = (phiFiAnim - phiIni) * r;
+  const nAnim = Math.max(2, Math.ceil(recorregut / Math.max(pasPosicions, recorregut / MAX_POSICIONS_TALL)));
+  const posicionsAnim = posicionsEntre(phiIni, phiFiAnim, nAnim);
 
   const brut = new Path2D();
   brut.arc(0, 0, ra, 0, 2 * Math.PI);
-  const rForat = Math.min(0.3 * (roda.df / 2), 4 * roda.m);
+  const rForat = Math.min(0.3 * rf, 4 * m);
   brut.moveTo(rForat, 0);
   brut.arc(0, 0, rForat, 0, 2 * Math.PI);
 
   return {
     roda,
     r,
+    pm,
     phiIni,
     phiFi,
+    phiFiAnim,
     posicions,
+    posicionsAnim,
+    duradaTall: Math.min(30, Math.max(8, 0.5 * roda.z)),
     camiEina: camiDe(eina.tancat, true),
+    camiTall: camiDe(tall.tancat, true),
     camiVentall: camiDe(ventall.dents, false),
     camiBrut: brut,
+    acumulador: { canvas: null, ctx: null, k: 0, costat: 0, ultim: -1, phi: -Infinity, color: null },
     vCos: eina.tancat[eina.tancat.length - 1][1],
   };
 }
 
 /** Angle de rodolament per a un temps d'animació t (s); el cicle es repeteix. */
 export function phiAnimacio(g, t) {
-  const tc = t % (DURADA_TALL + DURADA_PAUSA);
-  return g.phiIni + (g.phiFi - g.phiIni) * Math.min(1, tc / DURADA_TALL);
+  const tc = t % (g.duradaTall + DURADA_PAUSA);
+  return g.phiIni + (g.phiFiAnim - g.phiIni) * Math.min(1, tc / g.duradaTall);
 }
 
 /** Caixa (en mm) que conté la roda i la cremallera. */
@@ -62,21 +85,87 @@ export function caixaGeneracio(g) {
   return { xMin: -ra - 2 * m, xMax: ra + 2 * m, yMin: -ra, yMax: g.r + g.vCos };
 }
 
-// col·loca l'eina a l'angle φ dins el sistema de coordenades actual (roda o fix)
+// Col·loca l'eina a l'angle φ dins el sistema de coordenades actual (roda o fix).
+// L'avanç r·φ es redueix a [−pas/2, pas/2] amb un nombre enter de passos:
+// la cremallera és periòdica, així que el resultat és el mateix i les dents queden a la vista.
+function desplacamentEina(g, phi) {
+  const avanc = g.r * phi;
+  return avanc - g.pm * Math.round(avanc / g.pm);
+}
+
 function ambEina(ctx, g, phi, accio) {
   ctx.save();
-  ctx.translate(g.r * phi, g.r);
+  ctx.translate(desplacamentEina(g, phi), g.r);
   accio();
   ctx.restore();
 }
 
 /**
- * Dibuixa la vista de generació. ctx ha de tenir la transformació món (mm, Y amunt).
- * opcions: { animant, phi, px, colors, camiRoda, etiqueta(x, y, text, color) }
+ * Un sol camí amb el ventall de l'eina per a les posicions donades, en el sistema de la roda
+ * (molt més ràpid que traçar cada posició per separat).
  */
-export function pintarGeneracio(ctx, g, { animant, phi, px, colors, camiRoda, etiqueta }) {
-  const { r } = g;
+function camiTraces(g, posicions, maxim = Infinity) {
+  const traces = new Path2D();
+  const pas = Math.max(1, Math.ceil(posicions.length / maxim));
+  for (let i = posicions.length - 1; i >= 0; i -= pas) {
+    const ph = posicions[i];
+    const mat = new DOMMatrix().rotateSelf((ph * 180) / Math.PI).translateSelf(desplacamentEina(g, ph), g.r);
+    traces.addPath(g.camiVentall, mat);
+  }
+  return traces;
+}
 
+const MAX_TEXTURA = 3072; // px de costat de la imatge on s'acumula el tall
+
+/**
+ * Peça en brut tallada fins a φ, acumulada en una imatge en el sistema de la roda.
+ * Cada fotograma només hi afegeix les posicions noves de l'eina; la imatge es refà
+ * si canvia molt el zoom o si l'animació torna a començar.
+ */
+function actualitzarTall(g, phi, pxPerMm, colors) {
+  const acc = g.acumulador;
+  const ra = g.roda.da / 2;
+  const k = Math.min(pxPerMm, MAX_TEXTURA / (2 * ra));
+  const refer = !acc.canvas || phi < acc.phi || k > acc.k * 1.25 || k < acc.k / 1.25 || acc.color !== colors.pinyoBrut;
+  if (refer) {
+    const costat = Math.max(16, Math.ceil(2 * ra * k));
+    acc.canvas = acc.canvas || document.createElement('canvas');
+    acc.canvas.width = costat;
+    acc.canvas.height = costat;
+    acc.ctx = acc.canvas.getContext('2d');
+    acc.k = costat / (2 * ra);
+    acc.costat = costat;
+    acc.ultim = -1;
+    acc.color = colors.pinyoBrut;
+    const c = acc.ctx;
+    c.setTransform(acc.k, 0, 0, -acc.k, costat / 2, costat / 2); // mm, Y amunt, origen al centre
+    c.globalCompositeOperation = 'source-over';
+    c.clearRect(-ra, -ra, 2 * ra, 2 * ra);
+    c.fillStyle = colors.pinyoBrut;
+    c.fill(g.camiBrut, 'evenodd');
+  }
+  const c = acc.ctx;
+  c.globalCompositeOperation = 'destination-out';
+  c.fillStyle = '#000';
+  const pos = g.posicionsAnim;
+  let i = acc.ultim + 1;
+  for (; i < pos.length && pos[i] <= phi; i++) {
+    c.save();
+    c.rotate(pos[i]);
+    ambEina(c, g, pos[i], () => c.fill(g.camiTall));
+    c.restore();
+  }
+  acc.ultim = i - 1;
+  acc.phi = phi;
+  return acc;
+}
+
+/**
+ * Dibuixa la vista de generació. ctx ha de tenir la transformació món (mm, Y amunt).
+ * opcions: { animant, phi, px, pxPerMm (píxels de dispositiu per mm), colors, camiRoda,
+ *            etiqueta(x, y, text, color, alineacio) }
+ */
+export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, camiRoda, etiqueta }) {
   if (!animant) {
     // peça acabada amb el ventall de posicions de l'eina (sistema de la roda = fix, φ = 0)
     ctx.fillStyle = colors.pinyoFarciment;
@@ -84,12 +173,8 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, colors, camiRoda, et
     ctx.strokeStyle = colors.eina;
     ctx.globalAlpha = 0.35;
     ctx.lineWidth = px;
-    for (const ph of g.posicions) {
-      ctx.save();
-      ctx.rotate(ph);
-      ambEina(ctx, g, ph, () => ctx.stroke(g.camiVentall));
-      ctx.restore();
-    }
+    g.tracesVentall = g.tracesVentall || camiTraces(g, g.posicions);
+    ctx.stroke(g.tracesVentall);
     ctx.globalAlpha = 1;
     ctx.strokeStyle = colors.pinyo;
     ctx.lineWidth = 2 * px;
@@ -97,40 +182,29 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, colors, camiRoda, et
     pintarEina(ctx, g, 0, colors, px);
   } else {
     // sistema de la roda girat −φ: la peça en brut perd el material que toca l'eina
+    const acc = actualitzarTall(g, phi, pxPerMm, colors);
+    const S = acc.costat / acc.k; // mm
     ctx.save();
     ctx.rotate(-phi);
-    ctx.fillStyle = colors.pinyoBrut;
-    ctx.fill(g.camiBrut, 'evenodd');
-    ctx.fillStyle = colors.fons;
-    for (const ph of g.posicions) {
-      if (ph > phi) break;
-      ctx.save();
-      ctx.rotate(ph);
-      ambEina(ctx, g, ph, () => ctx.fill(g.camiEina));
-      ctx.restore();
-    }
     ctx.save();
-    ctx.rotate(phi);
-    ambEina(ctx, g, phi, () => ctx.fill(g.camiEina));
+    ctx.scale(1, -1);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(acc.canvas, -S / 2, -S / 2, S, S);
     ctx.restore();
-    // traces de les posicions ja passades
+    // traces de les posicions recents (les que encara estan tallant)
     ctx.strokeStyle = colors.eina;
     ctx.globalAlpha = 0.3;
     ctx.lineWidth = px;
-    for (const ph of g.posicions) {
-      if (ph > phi) break;
-      ctx.save();
-      ctx.rotate(ph);
-      ambEina(ctx, g, ph, () => ctx.stroke(g.camiVentall));
-      ctx.restore();
-    }
+    const desDe = phi - (g.phiFi - g.phiIni);
+    const recents = g.posicionsAnim.filter((ph) => ph <= phi && ph >= desDe);
+    if (recents.length) ctx.stroke(camiTraces(g, recents, 40));
     ctx.globalAlpha = 1;
-    // perfil final, com a referència
+    // perfil final, com a referència (traç continu i suau: el discontinu és car amb molts punts)
     ctx.strokeStyle = colors.pinyo;
     ctx.lineWidth = px;
-    ctx.setLineDash([4 * px, 3 * px]);
+    ctx.globalAlpha = 0.45;
     ctx.stroke(camiRoda);
-    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
     ctx.restore();
     pintarEina(ctx, g, phi, colors, px);
   }

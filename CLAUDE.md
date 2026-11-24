@@ -9,7 +9,7 @@ La disposicion en pantalla debe ser vertical (para su visualizacion en smartphon
 
 
 ## Estructura
-- index.html, css/styles.css, js/ (módulos ES: geometry.js, ui.js, charts.js)
+- index.html, css/styles.css, js/ (módulos ES: geometry.js, ui.js, charts.js, generacio.js)
 - Gráficos con Chart.js (CDN); perfil del diente dibujado en <canvas> o SVG
 
 ## Convenciones

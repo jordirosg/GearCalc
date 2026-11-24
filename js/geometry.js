@@ -43,6 +43,12 @@ export function repartirDesplacaments(z1, z2, suma, relacio, alpha = ALPHA_P) {
   return [x1, suma - x1];
 }
 
+/** Relació s_b1 / s_b2 que reparteix la suma de desplaçaments a parts iguals (x1 = x2). */
+export function relacioDesplacamentsIguals(z1, z2, suma, alpha = ALPHA_P) {
+  const x = suma / 2;
+  return gruixBase(z1, 1, x, alpha) / gruixBase(z2, 1, x, alpha); // el mòdul es cancel·la
+}
+
 /** Desplaçament mínim sense soscavament per a la cremallera ISO 53 (amb arrodoniment de cap). */
 export function desplacamentMinim(z, perfil, alpha = ALPHA_P) {
   const P = PERFILS[perfil];
@@ -140,6 +146,43 @@ export function contornEina(roda, { nArrodoniment = 64 } = {}) {
   return { pts, cr, vTop };
 }
 
+/**
+ * Interval d'angles de rodolament [phiIni, phiFi] en què la dent 0 de l'eina toca
+ * la peça en brut (Ø d_a). Fora d'aquest interval l'eina no talla res.
+ */
+export function finestraGeneracio(roda) {
+  const { m, alpha } = roda;
+  const r = roda.d / 2;
+  const rf = roda.df / 2;
+  const ra = roda.da / 2;
+  const { cr, vTop } = contornEina(roda, { nArrodoniment: 1 });
+  const W = Math.sqrt(Math.max(0, ra * ra - rf * rf));
+  const H = W + (Math.PI * m) / 2 + (vTop - cr.vT) * Math.tan(alpha);
+  return { phiIni: (-H - (Math.PI * m) / 2) / r, phiFi: (H - (Math.PI * m) / 2) / r };
+}
+
+/**
+ * Contorn complet de la cremallera (2·dents + 1 dents, centrades a u = π m / 2 + j π m)
+ * en coordenades (u, v), tancat pel cos de l'eina. Serveix per dibuixar-la.
+ * Retorna { tancat: [[u, v], ...] (polígon), dents: [[u, v], ...] (només el perfil dentat) }.
+ */
+export function contornCremallera(roda, { dents = 2, nArrodoniment = 16 } = {}) {
+  const { pts, vTop } = contornEina(roda, { nArrodoniment });
+  const pm = Math.PI * roda.m;
+  const perfil = [];
+  for (let j = -dents; j <= dents; j++) {
+    const c = pm / 2 + j * pm; // centre de la dent j
+    for (const [u, v] of pts) perfil.push([u + j * pm, v]);
+    for (let i = pts.length - 2; i >= 0; i--) {
+      const [u, v] = pts[i];
+      perfil.push([2 * c - (u + j * pm), v]);
+    }
+  }
+  const vCos = vTop + 1.5 * roda.m;
+  const tancat = [...perfil, [perfil[perfil.length - 1][0], vCos], [perfil[0][0], vCos]];
+  return { tancat, dents: perfil };
+}
+
 /** Eina col·locada per a l'angle de rodolament φ, en el sistema de la roda. */
 export function posicioEina(phi, r, pts) {
   const c = Math.cos(phi);
@@ -165,7 +208,7 @@ export function generarFlanc(roda, { nRadis = 200, pasRodolament = roda.m / 100 
   const rf = roda.df / 2;
   const ra = roda.da / 2;
   if (ra <= rf) throw new Error('El diàmetre de cap no supera el de fons.');
-  const { pts, cr, vTop } = contornEina(roda);
+  const { pts, cr } = contornEina(roda);
 
   // graella de radis, més densa a prop del fons
   const Rs = new Float64Array(nRadis + 1);
@@ -174,10 +217,9 @@ export function generarFlanc(roda, { nRadis = 200, pasRodolament = roda.m / 100 
   const millor = new Float64Array(nRadis + 1).fill(Infinity);
 
   // recorregut de l'eina mentre toca la peça en brut
-  const W = Math.sqrt(ra * ra - rf * rf);
-  const H = W + (Math.PI * m) / 2 + (vTop - cr.vT) * Math.tan(alpha);
-  const uIni = -H - (Math.PI * m) / 2;
-  const uFi = H - (Math.PI * m) / 2;
+  const { phiIni, phiFi } = finestraGeneracio(roda);
+  const uIni = phiIni * r;
+  const uFi = phiFi * r;
   const nPassos = Math.ceil((uFi - uIni) / pasRodolament);
   const n = pts.length;
   const gx = new Float64Array(n);

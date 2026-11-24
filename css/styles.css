@@ -14,6 +14,9 @@
   --error: #c62828;
   --avis: #b26a00;
   --ombra: 0 6px 24px rgba(0, 0, 0, 0.18);
+  --eina: #7a5ad6;
+  --eina-farciment: rgba(122, 90, 214, 0.12);
+  --pinyo-brut: rgba(47, 111, 208, 0.32);
   color-scheme: light;
 }
 
@@ -34,6 +37,9 @@
     --error: #ff6b6b;
     --avis: #f0b440;
     --ombra: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --eina: #b39dff;
+    --eina-farciment: rgba(179, 157, 255, 0.12);
+    --pinyo-brut: rgba(110, 162, 255, 0.32);
     color-scheme: dark;
   }
 }
@@ -82,6 +88,7 @@ html, body {
   cursor: pointer;
 }
 .boto-flotant:active { transform: scale(0.96); }
+.boto-flotant[aria-pressed="true"] { background: var(--accent); color: var(--superficie); border-color: var(--accent); }
 
 .estat {
   position: fixed;
@@ -185,7 +192,8 @@ input.invalid { border-color: var(--error); }
 .fila-lliscador span { color: var(--text); font-size: 15px; }
 .fila-lliscador output { font-variant-numeric: tabular-nums; font-weight: 600; }
 input[type="range"] { width: 100%; accent-color: var(--accent); height: 32px; }
-.extrems { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-suau); }
+.extrems { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: var(--text-suau); }
+.extrems .botons { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 
 .casella { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 14px; margin: 6px 0; }
 
@@ -200,6 +208,35 @@ input[type="range"] { width: 100%; accent-color: var(--accent); height: 32px; }
 .taula th:first-child, .taula td:first-child { text-align: left; color: var(--text-suau); font-weight: 400; }
 .taula thead th { color: var(--text); font-weight: 600; }
 .taula .pinyo { color: var(--pinyo); }
+
+/* tooltips de les etiquetes de les taules */
+.etiqueta {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--text-suau);
+  outline: none;
+}
+.etiqueta:hover::after,
+.etiqueta:focus::after {
+  content: attr(data-ajuda);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  width: min(300px, 80vw);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--superficie);
+  box-shadow: var(--ombra);
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
+  z-index: 20;
+  pointer-events: none;
+}
+.etiqueta:focus { color: var(--accent); }
 .taula .roda { color: var(--roda); }
 
 .grafic { position: relative; height: 220px; }

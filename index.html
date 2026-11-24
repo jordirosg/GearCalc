@@ -17,6 +17,7 @@
     <button id="btn-animar" class="boto-flotant" title="Girar / aturar">▶</button>
     <button id="btn-engranament" class="boto-flotant" title="Ampliar la zona d'engranament">◎</button>
     <button id="btn-encaixar" class="boto-flotant" title="Veure-ho tot">⤢</button>
+    <button id="btn-generacio" class="boto-flotant" aria-pressed="false" title="Generació del pinyó per la cremallera">✂</button>
   </div>
   <div id="estat" class="estat" role="status"></div>
 
@@ -50,9 +51,16 @@
       <h2>Repartiment de desplaçaments</h2>
       <label class="fila-lliscador">
         <span>s_b1 / s_b2 = <output id="relacio-valor">1,000</output></span>
-        <input id="relacio" type="range" min="-1" max="1" step="0.001" value="0">
+        <input id="relacio" type="range" min="-1" max="1" step="any" value="0">
       </label>
-      <div class="extrems"><span>0,5</span><button id="btn-relacio-1" class="boto-text">1 : 1</button><span>2</span></div>
+      <div class="extrems">
+        <span id="relacio-min">0,5</span>
+        <span class="botons">
+          <button id="btn-relacio-1" class="boto-text" title="Iguala el gruix a la base de pinyó i roda">s_b1 = s_b2</button>
+          <button id="btn-x-iguals" class="boto-text" title="Iguala els desplaçaments de pinyó i roda">x₁ = x₂</button>
+        </span>
+        <span id="relacio-max">2</span>
+      </div>
     </section>
 
     <section>

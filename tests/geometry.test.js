@@ -13,6 +13,9 @@ import {
   contornRoda,
   lliscamentEspecific,
   desplacamentMinim,
+  relacioDesplacamentsIguals,
+  contornCremallera,
+  finestraGeneracio,
 } from '../js/geometry.js';
 
 const aprop = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} ≠ ${b} (tol ${tol})`);
@@ -45,6 +48,16 @@ test('relació de gruixos a la base i suma de desplaçaments', () => {
     aprop(r1.sb / r2.sb, relacio, 1e-12, 'sb1/sb2');
     aprop(r1.sb, gruixBase(13, 2.5, r1.x), 1e-12);
     aprop(r1.x + r2.x, p.sumaX, 1e-12);
+  }
+});
+
+test('relació per a desplaçaments iguals: x1 = x2', () => {
+  for (const [z1, z2, m, a] of [[11, 25, 2.25, 43], [17, 40, 2, 58], [10, 200, 1, 106]]) {
+    const base = calcularParella({ z1, z2, m, a });
+    const relacio = relacioDesplacamentsIguals(z1, z2, base.sumaX);
+    const p = calcularParella({ z1, z2, m, a, relacio });
+    aprop(p.rodes[0].x, p.rodes[1].x, 1e-12, `${z1}/${z2}`);
+    aprop(p.rodes[0].x, base.sumaX / 2, 1e-12);
   }
 });
 
@@ -222,4 +235,35 @@ test('lliscament específic: nul al pol, signes oposats als extrems', () => {
   aprop(1 - (rho2 * z1) / (rho1 * z2), 0, 1e-12);
   assert.ok(d.g[0] < d.gC && d.gC < d.g[d.g.length - 1]);
   assert.ok(d.zeta1[0] < 0 && d.zeta1[d.zeta1.length - 1] > 0);
+});
+
+test('cremallera: contorn simètric respecte de la dent central i cap a v_T', () => {
+  const p = calcularParella({ z1: 17, z2: 40, m: 2, a: 58, perfil: 'D' });
+  const rw = p.rodes[0];
+  const { tancat, dents } = contornCremallera(rw, { dents: 2 });
+  const pm = Math.PI * rw.m;
+  const n = dents.length;
+  for (let i = 0; i < n; i++) {
+    aprop(dents[i][0], pm - dents[n - 1 - i][0], 1e-12, 'u simètrica');
+    aprop(dents[i][1], dents[n - 1 - i][1], 1e-12, 'v simètrica');
+  }
+  assert.equal(tancat.length, n + 2, "tancat pel cos de l'eina");
+  const cr = dadesCremallera(rw.m, rw.x, 'D');
+  aprop(Math.min(...dents.map(([, v]) => v)), cr.vT, 1e-12, 'cap de la cremallera');
+});
+
+test("finestra de generació: fora d'ella l'eina no toca la peça en brut", () => {
+  const p = calcularParella({ z1: 17, z2: 40, m: 2, a: 58 });
+  const rw = p.rodes[0];
+  const { phiIni, phiFi } = finestraGeneracio(rw);
+  const r = rw.d / 2;
+  const ra = rw.da / 2;
+  const { dents } = contornCremallera(rw, { dents: 0 });
+  for (const phi of [phiIni, phiFi]) {
+    // dent 0 de l'eina col·locada a φ, en el sistema de la roda
+    const c = Math.cos(phi);
+    const s = Math.sin(phi);
+    const rMin = Math.min(...dents.map(([u, v]) => Math.hypot((u + r * phi) * c - (r + v) * s, (u + r * phi) * s + (r + v) * c)));
+    assert.ok(rMin >= ra - 1e-9, `φ=${phi}: rMin ${rMin} < ra ${ra}`);
+  }
 });

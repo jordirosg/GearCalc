@@ -1,6 +1,7 @@
 // Interfície: calaix d'entrada, llenç a pantalla completa (pinyó a dalt, roda a baix).
-import { calcularParella, contornRoda, lliscamentEspecific, radAGraus } from './geometry.js';
+import { calcularParella, contornRoda, lliscamentEspecific, radAGraus, relacioDesplacamentsIguals } from './geometry.js';
 import { crearGraficLliscament, actualitzarGraficLliscament } from './charts.js';
+import { prepararGeneracio, pintarGeneracio, phiAnimacio, caixaGeneracio } from './generacio.js';
 
 const $ = (id) => document.getElementById(id);
 const CLAU = 'gearcalc.v2';
@@ -21,6 +22,9 @@ let parella = null; // últim càlcul vàlid
 let camins = null; // Path2D del pinyó i de la roda
 let vista = { s: 1, ox: 0, oy: 0 };
 let theta = 0; // gir del pinyó (rad)
+let mode = 'engranament'; // 'engranament' | 'generacio'
+let generacio = null; // dades preparades per a la vista de generació del pinyó
+let tGeneracio = 0; // temps de l'animació de generació (s)
 let animant = false;
 let darrerT = 0;
 let pendent = false;
@@ -38,7 +42,22 @@ entrades.z2.value = dades.z2;
 entrades.m.value = dades.m;
 entrades.a.value = dades.a;
 entrades.perfil.value = dades.perfil;
-entrades.relacio.value = dades.relacioLog;
+
+/**
+ * Col·loca el lliscador a log2(s_b1 / s_b2) = v. Si v surt del rang (±1, és a dir 0,5–2),
+ * l'amplia perquè el valor es pugui representar, i actualitza les etiquetes dels extrems.
+ */
+function posarRelacioLog(v) {
+  if (!Number.isFinite(v)) v = 0;
+  const el = entrades.relacio;
+  const limit = Math.max(1, Math.ceil(Math.abs(v) * 10) / 10);
+  el.min = String(-limit);
+  el.max = String(limit);
+  el.value = String(v);
+  $('relacio-min').textContent = f3(2 ** -limit).replace(/0+$/, '').replace(/,$/, '');
+  $('relacio-max').textContent = f3(2 ** limit).replace(/0+$/, '').replace(/,$/, '');
+}
+posarRelacioLog(dades.relacioLog);
 
 function desar() {
   try { localStorage.setItem(CLAU, JSON.stringify(dades)); } catch { /* sense emmagatzematge */ }
@@ -70,10 +89,10 @@ function recalcular({ encaixar = false } = {}) {
     dades = e;
     desar();
     camins = parella.rodes.map((rw) => crearCami(rw));
+    generacio = prepararGeneracio(parella.rodes[0]);
     pintarResultats();
     actualitzarGraficLliscament(grafic, lliscamentEspecific(parella));
-    const [p1, p2] = parella.rodes;
-    mostrarEstat(`x₁ = ${f4(p1.x)} · x₂ = ${f4(p2.x)} · α_w = ${f3(radAGraus(parella.alphaW))}° · ε_α = ${f3(parella.epsilonAlpha)}`);
+    mostrarEstatParella();
     if (encaixar) encaixarTot();
   } catch (err) {
     const msg = err.message || String(err);
@@ -86,6 +105,16 @@ function recalcular({ encaixar = false } = {}) {
     $('avisos').append(elementAvis({ nivell: 'error', text: msg }));
   }
   dibuixar();
+}
+
+function mostrarEstatParella() {
+  if (!parella) return;
+  const [p1, p2] = parella.rodes;
+  if (mode === 'generacio') {
+    mostrarEstat(`Generació del pinyó · z₁ = ${p1.z} · x₁ = ${f4(p1.x)} · perfil ${parella.entrada.perfil}`);
+  } else {
+    mostrarEstat(`x₁ = ${f4(p1.x)} · x₂ = ${f4(p2.x)} · α_w = ${f3(radAGraus(parella.alphaW))}° · ε_α = ${f3(parella.epsilonAlpha)}`);
+  }
 }
 
 function mostrarEstat(text, error = false) {
@@ -108,36 +137,70 @@ function pintarResultats() {
   for (const a of parella.avisos) llista.append(elementAvis(a));
 
   const filesParella = [
-    ['a₀ (mm)', f3(parella.a0)],
-    ['α_w (°)', f3(radAGraus(parella.alphaW))],
-    ['x₁ + x₂', f4(parella.sumaX)],
-    ['k · m (mm)', f4(parella.k * parella.entrada.m)],
-    ['ε_α', f3(parella.epsilonAlpha)],
-    ['Joc de fons c (mm)', f3(parella.jocFons[0])],
+    ['a₀ (mm)', f3(parella.a0), AJUDA.a0],
+    ['α_w (°)', f3(radAGraus(parella.alphaW)), AJUDA.alphaW],
+    ['x₁ + x₂', f4(parella.sumaX), AJUDA.sumaX],
+    ['k · m (mm)', f4(parella.k * parella.entrada.m), AJUDA.k],
+    ['ε_α', f3(parella.epsilonAlpha), AJUDA.epsilonAlpha],
+    ['Joc de fons c (mm)', f3(parella.jocFons[0]), AJUDA.jocFons],
   ];
-  $('taula-parella').innerHTML = filesParella.map(([n, v]) => `<tr><td>${n}</td><td>${v}</td></tr>`).join('');
+  $('taula-parella').innerHTML = filesParella
+    .map(([n, v, ajuda]) => `<tr><td>${etiqueta(n, ajuda)}</td><td>${v}</td></tr>`)
+    .join('');
 
   const [p, r] = parella.rodes;
   const files = [
-    ['z', (w) => String(w.z)],
-    ['x', (w) => f4(w.x)],
-    ['x_min (soscavament)', (w) => f4(w.xMin)],
-    ['d (mm)', (w) => f3(w.d)],
-    ['d_b (mm)', (w) => f3(w.db)],
-    ['d_w (mm)', (w) => f3(w.dw)],
-    ['d_a (mm)', (w) => f3(w.da)],
-    ['d_f (mm)', (w) => f3(w.df)],
-    ['d_Nf forma (mm)', (w) => f3(w.dNf)],
-    ['d inici contacte (mm)', (w) => (Number.isFinite(w.dSAP) ? f3(w.dSAP) : '—')],
-    ['s (mm)', (w) => f3(w.s)],
-    ['s_b (mm)', (w) => f3(w.sb)],
-    ['s_w (mm)', (w) => f3(w.sw)],
-    ['s_a (mm)', (w) => f3(w.sa)],
+    ['z', (w) => String(w.z), AJUDA.z],
+    ['x', (w) => f4(w.x), AJUDA.x],
+    ['x_min (soscavament)', (w) => f4(w.xMin), AJUDA.xMin],
+    ['d (mm)', (w) => f3(w.d), AJUDA.d],
+    ['d_b (mm)', (w) => f3(w.db), AJUDA.db],
+    ['d_w (mm)', (w) => f3(w.dw), AJUDA.dw],
+    ['d_a (mm)', (w) => f3(w.da), AJUDA.da],
+    ['d_f (mm)', (w) => f3(w.df), AJUDA.df],
+    ['d_Nf forma (mm)', (w) => f3(w.dNf), AJUDA.dNf],
+    ['d inici contacte (mm)', (w) => (Number.isFinite(w.dSAP) ? f3(w.dSAP) : '—'), AJUDA.dSAP],
+    ['s (mm)', (w) => f3(w.s), AJUDA.s],
+    ['s_b (mm)', (w) => f3(w.sb), AJUDA.sb],
+    ['s_w (mm)', (w) => f3(w.sw), AJUDA.sw],
+    ['s_a (mm)', (w) => f3(w.sa), AJUDA.sa],
   ];
   $('taula-rodes').innerHTML =
     '<thead><tr><th></th><th class="pinyo">Pinyó</th><th class="roda">Roda</th></tr></thead><tbody>' +
-    files.map(([n, fn]) => `<tr><td>${n}</td><td>${fn(p)}</td><td>${fn(r)}</td></tr>`).join('') +
+    files.map(([n, fn, ajuda]) => `<tr><td>${etiqueta(n, ajuda)}</td><td>${fn(p)}</td><td>${fn(r)}</td></tr>`).join('') +
     '</tbody>';
+}
+
+// ---------------------------------------------------------------- ajuda de les taules
+const AJUDA = {
+  a0: 'Distància entre centres sense desplaçament: a₀ = m (z₁ + z₂) / 2.',
+  alphaW: "Angle de pressió de funcionament. Surt de la distància entre centres: cos α_w = a₀ cos α / a. Amb a = a₀ val 20°.",
+  sumaX: 'Suma de desplaçaments que dona joc nul a la distància entre centres a. Fixada per a; el lliscador només la reparteix entre pinyó i roda.',
+  k: "Escurçament de cap (k · m ≤ 0). Retalla el diàmetre de cap perquè el joc de fons continuï valent c_P quan a ≠ a₀.",
+  epsilonAlpha: "Grau de recobriment: nombre mitjà de parells de dents en contacte. Ha de ser > 1; recomanable ≥ 1,1–1,2.",
+  jocFons: "Separació radial entre el cap d'una roda i el fons de l'altra. Ha de coincidir amb c_P de la cremallera (0,25 m; 0,40 m al perfil D).",
+  z: 'Nombre de dents.',
+  x: "Coeficient de desplaçament del perfil: quant s'aparta la cremallera en tallar, en múltiples de m. Positiu = cap enfora: dent més gruixuda al peu i més punxeguda al cap.",
+  xMin: "Desplaçament mínim perquè el cap arrodonit de la cremallera no soscavi el peu de la dent. Si x < x_min, hi ha soscavament.",
+  d: 'Diàmetre de referència, d = z · m. És la circumferència sobre la qual rodola la cremallera en tallar.',
+  db: "Diàmetre base, d_b = d · cos 20°. L'evolvent neix en aquesta circumferència; per sota no hi pot haver evolvent.",
+  dw: 'Diàmetre primitiu de funcionament: les circumferències que rodolen sense lliscar en engranar. d_w1 / 2 + d_w2 / 2 = a.',
+  da: "Diàmetre de cap (exterior). Inclou l'escurçament de cap k · m.",
+  df: "Diàmetre de fons (peu), on arriba el cap de la cremallera: d_f = d − 2 (h_fP − x · m).",
+  dNf: "Diàmetre de forma del peu: on comença l'evolvent. Per sota hi ha l'acord deixat per l'arrodoniment de la cremallera.",
+  dSAP: "Diàmetre on comença el contacte amb l'altra roda (SAP), determinat pel cap de la roda conjugada. Ha de ser ≥ d_Nf; si no, hi ha interferència.",
+  s: 'Gruix de la dent, mesurat en arc, sobre el diàmetre de referència d.',
+  sb: 'Gruix de la dent sobre la circumferència base. La seva relació entre pinyó i roda és la que fixa el lliscador s_b1 / s_b2.',
+  sw: 'Gruix sobre el diàmetre primitiu de funcionament. Amb joc nul, s_w1 + s_w2 = pas de funcionament (π · d_w / z).',
+  sa: "Gruix de la dent al cap (sobre d_a). Es recomana s_a ≥ 0,2 · m (avís); si s'anul·la, la dent és punxeguda.",
+};
+
+const escapar = (t) => t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+/** Etiqueta de fila amb tooltip: hover en ordinador, toc (focus) en mòbil. */
+function etiqueta(nom, ajuda) {
+  if (!ajuda) return nom;
+  return `<span class="etiqueta" tabindex="0" data-ajuda="${escapar(ajuda)}" aria-label="${escapar(`${nom}: ${ajuda}`)}">${nom}</span>`;
 }
 
 // agrupa entrades ràpides (lliscador) en un càlcul per fotograma: tallar és costós
@@ -165,7 +228,13 @@ $('btn-a0').addEventListener('click', () => {
   }
 });
 $('btn-relacio-1').addEventListener('click', () => {
-  entrades.relacio.value = 0;
+  posarRelacioLog(0);
+  recalcular();
+});
+$('btn-x-iguals').addEventListener('click', () => {
+  if (!parella) return;
+  const { z1, z2, alpha } = parella.entrada;
+  posarRelacioLog(Math.log2(relacioDesplacamentsIguals(z1, z2, parella.sumaX, alpha)));
   recalcular();
 });
 
@@ -201,6 +270,9 @@ function llegirColors() {
     rodaFarciment: c('--roda-farciment'),
     auxiliar: c('--auxiliar'),
     linia: c('--linia-engranament'),
+    eina: c('--eina'),
+    einaFarciment: c('--eina-farciment'),
+    pinyoBrut: c('--pinyo-brut'),
   };
 }
 llegirColors();
@@ -233,8 +305,19 @@ function mida() {
   return { w, h, dpr };
 }
 
+function encaixarCaixa({ xMin, xMax, yMin, yMax }) {
+  const { w, h } = mida();
+  const s = 0.92 * Math.min(w / (xMax - xMin), (h - 60) / (yMax - yMin));
+  vista = { s, ox: w / 2 - s * ((xMin + xMax) / 2), oy: h / 2 + s * ((yMin + yMax) / 2) };
+  dibuixar();
+}
+
 function encaixarTot() {
   if (!parella) return;
+  if (mode === 'generacio') {
+    encaixarCaixa(caixaGeneracio(generacio));
+    return;
+  }
   const { w, h } = mida();
   const [p, r] = parella.rodes;
   const a = parella.entrada.a;
@@ -252,6 +335,15 @@ function encaixarTot() {
 function encaixarEngranament() {
   if (!parella) return;
   const { w, h } = mida();
+  if (mode === 'generacio') {
+    // buit tallat per la dent 0 de l'eina, al voltant de la línia de rodolament
+    const { m } = parella.entrada;
+    const r = generacio.r;
+    const s = Math.min(w, h) / (7 * m);
+    vista = { s, ox: w / 2, oy: h / 2 + s * (r - 0.5 * m) };
+    dibuixar();
+    return;
+  }
   const yC = parella.entrada.a / 2 - parella.rodes[0].dw / 2;
   const s = Math.min(w, h) / (6 * parella.entrada.m);
   vista = { s, ox: w / 2, oy: h / 2 + s * yC };
@@ -273,14 +365,37 @@ function pintar(t) {
   ctx.fillRect(0, 0, w, h);
   if (!parella || !camins) return;
 
-  if (animant) {
-    if (darrerT) theta += ((t - darrerT) / 1000) * ((2 * Math.PI) / parella.entrada.z1 / 1.5);
-    darrerT = t;
-  }
+  const dt = animant && darrerT ? (t - darrerT) / 1000 : 0;
+  darrerT = animant ? t : 0;
 
   const { s, ox, oy } = vista;
   const px = 1 / s; // un píxel CSS en mm
   ctx.setTransform(dpr * s, 0, 0, -dpr * s, dpr * ox, dpr * oy);
+
+  if (mode === 'generacio') {
+    tGeneracio += dt;
+    pintarGeneracio(ctx, generacio, {
+      animant,
+      phi: phiAnimacio(generacio, tGeneracio),
+      px,
+      colors,
+      camiRoda: camins[0],
+      etiqueta: (x, y, text, color, alineacio = 'left') => {
+        ctx.save();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.fillStyle = color;
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.textAlign = alineacio;
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(text, ox + s * x, oy - s * y - 3);
+        ctx.restore();
+      },
+    });
+    if (animant) dibuixar();
+    return;
+  }
+
+  theta += dt * ((2 * Math.PI) / parella.entrada.z1 / 1.5);
 
   const [p, r] = parella.rodes;
   const a = parella.entrada.a;
@@ -424,6 +539,15 @@ $('btn-animar').addEventListener('click', () => {
   darrerT = 0;
   $('btn-animar').textContent = animant ? '⏸' : '▶';
   dibuixar();
+});
+$('btn-generacio').addEventListener('click', () => {
+  mode = mode === 'generacio' ? 'engranament' : 'generacio';
+  tGeneracio = 0;
+  const actiu = mode === 'generacio';
+  $('btn-generacio').setAttribute('aria-pressed', String(actiu));
+  $('btn-engranament').title = actiu ? 'Ampliar el buit tallat' : "Ampliar la zona d'engranament";
+  mostrarEstatParella();
+  encaixarTot();
 });
 
 let midaAnterior = { w: llenc.clientWidth, h: llenc.clientHeight };

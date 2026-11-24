@@ -17,7 +17,11 @@
     <button id="btn-animar" class="boto-flotant" title="Girar / aturar">▶</button>
     <button id="btn-engranament" class="boto-flotant" title="Ampliar la zona d'engranament">◎</button>
     <button id="btn-encaixar" class="boto-flotant" title="Veure-ho tot">⤢</button>
-    <button id="btn-generacio" class="boto-flotant" aria-pressed="false" title="Generació del pinyó per la cremallera">✂</button>
+    <button id="btn-generacio" class="boto-flotant" aria-pressed="false" title="Generació per la cremallera">✂</button>
+  </div>
+  <div id="selector-generacio" class="selector-generacio" role="group" aria-label="Roda a generar" hidden>
+    <button type="button" data-roda="0" aria-pressed="true">Pinyó</button>
+    <button type="button" data-roda="1" aria-pressed="false">Roda</button>
   </div>
   <div id="control-velocitat" class="control-velocitat" hidden>
     <label for="velocitat">Velocitat <output id="velocitat-valor">×0,25</output></label>

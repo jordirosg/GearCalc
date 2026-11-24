@@ -1,4 +1,4 @@
-// Vista de generació: la cremallera ISO 53 tallant el pinyó.
+// Vista de generació: la cremallera ISO 53 tallant el pinyó o la roda.
 // Sistema fix: centre de la roda a l'origen, línia de rodolament a Y = r (com a geometry.js).
 // La roda gira φ en sentit horari i la cremallera avança r·φ.
 // La cremallera és periòdica (pas π·m): en cada posició només es dibuixen les dents
@@ -146,7 +146,7 @@ function actualitzarTall(g, phi, pxPerMm, colors) {
   const acc = g.acumulador;
   const ra = g.roda.da / 2;
   const k = Math.min(pxPerMm, MAX_TEXTURA / (2 * ra));
-  const refer = !acc.canvas || phi < acc.phi || k > acc.k * 1.25 || k < acc.k / 1.25 || acc.color !== colors.pinyoBrut;
+  const refer = !acc.canvas || phi < acc.phi || k > acc.k * 1.25 || k < acc.k / 1.25 || acc.color !== colors.pecaBrut;
   if (refer) {
     const costat = Math.max(16, Math.ceil(2 * ra * k));
     acc.canvas = acc.canvas || document.createElement('canvas');
@@ -156,12 +156,12 @@ function actualitzarTall(g, phi, pxPerMm, colors) {
     acc.k = costat / (2 * ra);
     acc.costat = costat;
     acc.ultim = -1;
-    acc.color = colors.pinyoBrut;
+    acc.color = colors.pecaBrut;
     const c = acc.ctx;
     c.setTransform(acc.k, 0, 0, -acc.k, costat / 2, costat / 2); // mm, Y amunt, origen al centre
     c.globalCompositeOperation = 'source-over';
     c.clearRect(-ra, -ra, 2 * ra, 2 * ra);
-    c.fillStyle = colors.pinyoBrut;
+    c.fillStyle = colors.pecaBrut;
     c.fill(g.camiBrut, 'evenodd');
   }
   const c = acc.ctx;
@@ -182,13 +182,14 @@ function actualitzarTall(g, phi, pxPerMm, colors) {
 
 /**
  * Dibuixa la vista de generació. ctx ha de tenir la transformació món (mm, Y amunt).
- * opcions: { animant, phi, px, pxPerMm (píxels de dispositiu per mm), colors, camiRoda,
+ * opcions: { animant, phi, px, pxPerMm (píxels de dispositiu per mm), camiRoda,
+ *            colors (amb peca, pecaFarciment i pecaBrut: els colors de la roda tallada),
  *            etiqueta(x, y, text, color, alineacio) }
  */
 export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, camiRoda, etiqueta }) {
   if (!animant) {
     // peça acabada amb el ventall de posicions de l'eina (sistema de la roda = fix, φ = 0)
-    ctx.fillStyle = colors.pinyoFarciment;
+    ctx.fillStyle = colors.pecaFarciment;
     ctx.fill(camiRoda, 'evenodd');
     ctx.strokeStyle = colors.eina;
     ctx.globalAlpha = 0.35;
@@ -196,7 +197,7 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, cam
     g.tracesVentall = g.tracesVentall || camiTraces(g, g.posicions, { seguirDent0: true });
     ctx.stroke(g.tracesVentall);
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = colors.pinyo;
+    ctx.strokeStyle = colors.peca;
     ctx.lineWidth = 2 * px;
     ctx.stroke(camiRoda);
     pintarEina(ctx, g, 0, colors, px);
@@ -220,7 +221,7 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, cam
     if (recents.length) ctx.stroke(camiTraces(g, recents, { maxim: 40 }));
     ctx.globalAlpha = 1;
     // perfil final, com a referència (traç continu i suau: el discontinu és car amb molts punts)
-    ctx.strokeStyle = colors.pinyo;
+    ctx.strokeStyle = colors.peca;
     ctx.lineWidth = px;
     ctx.globalAlpha = 0.45;
     ctx.stroke(camiRoda);

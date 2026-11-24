@@ -23,9 +23,11 @@ try {
 let parella = null; // últim càlcul vàlid
 let camins = null; // Path2D del pinyó i de la roda
 let vista = { s: 1, ox: 0, oy: 0 };
+let vistaAutomatica = true; // la vista és l'encaix automàtic (l'usuari no ha fet zoom ni l'ha moguda)
 let theta = 0; // gir del pinyó (rad)
 let mode = 'engranament'; // 'engranament' | 'generacio'
-let generacio = null; // dades preparades per a la vista de generació del pinyó
+let generacions = null; // dades preparades per a la vista de generació [pinyó, roda]
+let rodaGeneracio = 0; // 0 = pinyó, 1 = roda
 const animGeneracio = { progres: 0, pausa: 0 }; // estat de l'animació de generació
 let animant = false;
 let darrerT = 0;
@@ -92,7 +94,7 @@ function recalcular({ encaixar = false } = {}) {
     dades = e;
     desar();
     camins = parella.rodes.map((rw) => crearCami(rw));
-    generacio = prepararGeneracio(parella.rodes[0]);
+    generacions = parella.rodes.map((rw) => prepararGeneracio(rw));
     pintarResultats();
     actualitzarGraficLliscament(grafic, lliscamentEspecific(parella));
     mostrarEstatParella();
@@ -114,7 +116,8 @@ function mostrarEstatParella() {
   if (!parella) return;
   const [p1, p2] = parella.rodes;
   if (mode === 'generacio') {
-    mostrarEstat(`Generació del pinyó · z₁ = ${p1.z} · x₁ = ${f4(p1.x)} · perfil ${parella.entrada.perfil}`);
+    const [nom, w, i] = rodaGeneracio === 0 ? ['del pinyó', p1, '₁'] : ['de la roda', p2, '₂'];
+    mostrarEstat(`Generació ${nom} · z${i} = ${w.z} · x${i} = ${f4(w.x)} · perfil ${parella.entrada.perfil}`);
   } else {
     mostrarEstat(`x₁ = ${f4(p1.x)} · x₂ = ${f4(p2.x)} · α_w = ${f3(radAGraus(parella.alphaW))}° · ε_α = ${f3(parella.epsilonAlpha)}`);
   }
@@ -276,6 +279,7 @@ function llegirColors() {
     eina: c('--eina'),
     einaFarciment: c('--eina-farciment'),
     pinyoBrut: c('--pinyo-brut'),
+    rodaBrut: c('--roda-brut'),
     contacte: c('--contacte'),
   };
 }
@@ -313,13 +317,14 @@ function encaixarCaixa({ xMin, xMax, yMin, yMax }) {
   const { w, h } = mida();
   const s = 0.92 * Math.min(w / (xMax - xMin), (h - 60) / (yMax - yMin));
   vista = { s, ox: w / 2 - s * ((xMin + xMax) / 2), oy: h / 2 + s * ((yMin + yMax) / 2) };
+  vistaAutomatica = true;
   dibuixar();
 }
 
 function encaixarTot() {
   if (!parella) return;
   if (mode === 'generacio') {
-    encaixarCaixa(caixaGeneracio(generacio));
+    encaixarCaixa(caixaGeneracio(generacions[rodaGeneracio]));
     return;
   }
   const { w, h } = mida();
@@ -333,6 +338,7 @@ function encaixarTot() {
   const alcada = yDalt - yBaix;
   const s = 0.92 * Math.min(w / amplada, (h - 60) / alcada);
   vista = { s, ox: w / 2, oy: h / 2 + s * ((yDalt + yBaix) / 2) };
+  vistaAutomatica = true;
   dibuixar();
 }
 
@@ -342,15 +348,17 @@ function encaixarEngranament() {
   if (mode === 'generacio') {
     // buit tallat per la dent 0 de l'eina, al voltant de la línia de rodolament
     const { m } = parella.entrada;
-    const r = generacio.r;
+    const r = generacions[rodaGeneracio].r;
     const s = Math.min(w, h) / (7 * m);
     vista = { s, ox: w / 2, oy: h / 2 + s * (r - 0.5 * m) };
+    vistaAutomatica = false;
     dibuixar();
     return;
   }
   const yC = parella.entrada.a / 2 - parella.rodes[0].dw / 2;
   const s = Math.min(w, h) / (6 * parella.entrada.m);
   vista = { s, ox: w / 2, oy: h / 2 + s * yC };
+  vistaAutomatica = false;
   dibuixar();
 }
 
@@ -377,14 +385,21 @@ function pintar(t) {
   ctx.setTransform(dpr * s, 0, 0, -dpr * s, dpr * ox, dpr * oy);
 
   if (mode === 'generacio') {
-    avancarAnimacio(generacio, animGeneracio, dt, velocitat());
-    pintarGeneracio(ctx, generacio, {
+    const g = generacions[rodaGeneracio];
+    avancarAnimacio(g, animGeneracio, dt, velocitat());
+    const esPinyo = rodaGeneracio === 0;
+    pintarGeneracio(ctx, g, {
       animant,
-      phi: phiAnimacio(generacio, animGeneracio.progres),
+      phi: phiAnimacio(g, animGeneracio.progres),
       px,
       pxPerMm: s * dpr,
-      colors,
-      camiRoda: camins[0],
+      colors: {
+        ...colors,
+        peca: esPinyo ? colors.pinyo : colors.roda,
+        pecaFarciment: esPinyo ? colors.pinyoFarciment : colors.rodaFarciment,
+        pecaBrut: esPinyo ? colors.pinyoBrut : colors.rodaBrut,
+      },
+      camiRoda: camins[rodaGeneracio],
       etiqueta: (x, y, text, color, alineacio = 'left') => {
         ctx.save();
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -503,6 +518,7 @@ function zoomA(px, py, factor) {
   const wy = (vista.oy - py) / vista.s;
   const s = Math.min(Math.max(vista.s * factor, 1e-3), 1e5);
   vista = { s, ox: px - wx * s, oy: py + wy * s };
+  vistaAutomatica = false;
   dibuixar();
 }
 
@@ -517,6 +533,7 @@ llenc.addEventListener('pointermove', (ev) => {
   if (punters.size === 1) {
     vista.ox += ev.clientX - previ.x;
     vista.oy += ev.clientY - previ.y;
+    vistaAutomatica = false;
     punters.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     dibuixar();
   } else if (punters.size === 2) {
@@ -575,9 +592,31 @@ $('btn-generacio').addEventListener('click', () => {
   const actiu = mode === 'generacio';
   $('btn-generacio').setAttribute('aria-pressed', String(actiu));
   $('btn-engranament').title = actiu ? 'Ampliar el buit tallat' : "Ampliar la zona d'engranament";
+  $('selector-generacio').hidden = !actiu;
   mostrarEstatParella();
   encaixarTot();
 });
+
+// selector de la roda a generar (visible només a la vista de generació)
+for (const boto of document.querySelectorAll('#selector-generacio button')) {
+  boto.addEventListener('click', () => {
+    const rAnterior = generacions ? generacions[rodaGeneracio].r : 0;
+    rodaGeneracio = Number(boto.dataset.roda);
+    for (const b of document.querySelectorAll('#selector-generacio button')) {
+      b.setAttribute('aria-pressed', String(b === boto));
+    }
+    animGeneracio.progres = 0;
+    animGeneracio.pausa = 0;
+    mostrarEstatParella();
+    if (vistaAutomatica || !generacions) {
+      encaixarTot();
+    } else {
+      // mateix zoom; la zona de tall (dalt de la línia de rodolament, Y = r) queda al mateix lloc
+      vista.oy += vista.s * (generacions[rodaGeneracio].r - rAnterior);
+      dibuixar();
+    }
+  });
+}
 
 let midaAnterior = { w: llenc.clientWidth, h: llenc.clientHeight };
 window.addEventListener('resize', () => {

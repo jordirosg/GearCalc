@@ -18,6 +18,7 @@
   --eina-farciment: rgba(82, 103, 125, 0.16);
   --pinyo-brut: rgba(47, 111, 208, 0.32);
   --contacte: #d11a6a;
+  --roda-brut: rgba(194, 87, 26, 0.30);
   color-scheme: light;
 }
 
@@ -42,6 +43,7 @@
     --eina-farciment: rgba(167, 184, 202, 0.16);
     --pinyo-brut: rgba(110, 162, 255, 0.32);
     --contacte: #ff5fa2;
+    --roda-brut: rgba(255, 154, 92, 0.30);
     color-scheme: dark;
   }
 }
@@ -91,6 +93,34 @@ html, body {
 }
 .boto-flotant:active { transform: scale(0.96); }
 .boto-flotant[aria-pressed="true"] { background: var(--accent); color: var(--superficie); border-color: var(--accent); }
+
+.selector-generacio {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  padding: 3px;
+  gap: 3px;
+  background: var(--superficie);
+  border: 1px solid var(--vora);
+  border-radius: 12px;
+  box-shadow: var(--ombra);
+  z-index: 5;
+}
+.selector-generacio[hidden] { display: none; }
+.selector-generacio button {
+  border: none;
+  border-radius: 9px;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+  color: var(--text-suau);
+  cursor: pointer;
+}
+.selector-generacio button[aria-pressed="true"][data-roda="0"] { background: var(--pinyo); color: var(--superficie); }
+.selector-generacio button[aria-pressed="true"][data-roda="1"] { background: var(--roda); color: var(--superficie); }
 
 .control-velocitat {
   position: fixed;

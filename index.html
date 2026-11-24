@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14161a">
+  <title>gearcalc</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" defer></script>
+  <script type="module" src="js/ui.js"></script>
+</head>
+<body>
+  <canvas id="lienzo" aria-label="Piñón y rueda engranando"></canvas>
+
+  <div class="barra" role="toolbar" aria-label="Controles de vista">
+    <button id="btn-drawer" class="boton-flotante" aria-controls="drawer" aria-expanded="false" title="Datos">☰</button>
+    <button id="btn-animar" class="boton-flotante" title="Girar / parar">▶</button>
+    <button id="btn-engrane" class="boton-flotante" title="Ampliar zona de engrane">◎</button>
+    <button id="btn-encajar" class="boton-flotante" title="Ver todo">⤢</button>
+  </div>
+  <div id="estado" class="estado" role="status"></div>
+
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <header class="drawer-cabecera">
+      <h1>gearcalc</h1>
+      <button id="btn-cerrar" class="boton-icono" title="Cerrar">✕</button>
+    </header>
+
+    <section>
+      <h2>Pareja</h2>
+      <div class="rejilla">
+        <label>Dientes piñón z₁<input id="z1" type="number" min="5" step="1" inputmode="numeric"></label>
+        <label>Dientes rueda z₂<input id="z2" type="number" min="5" step="1" inputmode="numeric"></label>
+        <label>Módulo m (mm)<input id="m" type="number" min="0.05" step="0.05" inputmode="decimal"></label>
+        <label>Dist. centros a (mm)<input id="a" type="number" min="0" step="0.1" inputmode="decimal"></label>
+      </div>
+      <p class="nota">a₀ = <span id="a0">–</span> mm <button id="btn-a0" class="boton-texto">usar a₀</button></p>
+      <label>Perfil de referencia ISO 53
+        <select id="perfil">
+          <option value="A">A — h_fP 1,25 m · ρ_fP 0,38 m</option>
+          <option value="B">B — h_fP 1,25 m · ρ_fP 0,30 m</option>
+          <option value="C">C — h_fP 1,25 m · ρ_fP 0,25 m</option>
+          <option value="D">D — h_fP 1,40 m · ρ_fP 0,39 m</option>
+        </select>
+      </label>
+      <p class="nota">α_P = 20° · h_aP = 1,00 m</p>
+    </section>
+
+    <section>
+      <h2>Reparto de desplazamientos</h2>
+      <label class="fila-deslizador">
+        <span>s_b1 / s_b2 = <output id="relacion-valor">1,000</output></span>
+        <input id="relacion" type="range" min="-1" max="1" step="0.001" value="0">
+      </label>
+      <div class="extremos"><span>0,5</span><button id="btn-relacion-1" class="boton-texto">1 : 1</button><span>2</span></div>
+    </section>
+
+    <section>
+      <h2>Avisos</h2>
+      <ul id="avisos" class="avisos"></ul>
+    </section>
+
+    <section>
+      <h2>Resultados</h2>
+      <table class="tabla" id="tabla-pareja"></table>
+      <table class="tabla" id="tabla-ruedas"></table>
+    </section>
+
+    <section>
+      <h2>Deslizamiento específico</h2>
+      <div class="grafico"><canvas id="grafico-deslizamiento"></canvas></div>
+    </section>
+
+    <section>
+      <h2>Vista</h2>
+      <label class="check"><input type="checkbox" id="ver-primitivas" checked> Circunferencias primitivas de funcionamiento</label>
+      <label class="check"><input type="checkbox" id="ver-base" checked> Circunferencias base</label>
+      <label class="check"><input type="checkbox" id="ver-linea" checked> Línea de engrane</label>
+    </section>
+  </aside>
+</body>
+</html>

@@ -12,6 +12,9 @@ export const PERFILS = Object.freeze({
   D: Object.freeze({ haP: 1.0, hfP: 1.4, rhoFP: 0.39 }),
 });
 
+/** Número amb 3 decimals i coma decimal, per als missatges. */
+const dec3 = (v) => v.toFixed(3).replace('.', ',');
+
 export const grausARad = (g) => (g * Math.PI) / 180;
 export const radAGraus = (r) => (r * 180) / Math.PI;
 
@@ -395,7 +398,7 @@ export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha
   const cosAw = (a0 * Math.cos(alpha)) / a;
   if (cosAw > 1) {
     throw new Error(
-      `Distància entre centres massa petita: ha de ser més gran que ${(a0 * Math.cos(alpha)).toFixed(3)} mm.`,
+      `Distància entre centres massa petita: ha de ser més gran que ${dec3(a0 * Math.cos(alpha))} mm.`,
     );
   }
   const alphaW = Math.acos(cosAw);
@@ -417,7 +420,7 @@ export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha
       throw new Error(`${nom}: ${e.message}`);
     }
     if (rw.flanc.soscavaDent) avisos.push({ nivell: 'error', text: `${nom}: el soscavament destrueix la dent.` });
-    else if (rw.soscavat) avisos.push({ nivell: 'avis', text: `${nom}: soscavament (x < x_min = ${rw.xMin.toFixed(3)}).` });
+    else if (rw.soscavat) avisos.push({ nivell: 'avis', text: `${nom}: soscavament (x < x_min = ${dec3(rw.xMin)}).` });
     if (rw.flanc.punxegut || rw.sa <= 0) avisos.push({ nivell: 'error', text: `${nom}: dent punxeguda.` });
     else if (rw.sa < 0.2 * m) avisos.push({ nivell: 'avis', text: `${nom}: gruix al cap petit (s_a < 0,2 m).` });
   }
@@ -441,8 +444,8 @@ export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha
   p2.dSAP = dSAP2;
   if (!(dSAP1 >= p1.dNf - 1e-9)) avisos.push({ nivell: 'error', text: 'Interferència al peu del pinyó.' });
   if (!(dSAP2 >= p2.dNf - 1e-9)) avisos.push({ nivell: 'error', text: 'Interferència al peu de la roda.' });
-  if (epsilonAlpha < 1) avisos.push({ nivell: 'error', text: `Grau de recobriment ε_α = ${epsilonAlpha.toFixed(3)} < 1.` });
-  else if (epsilonAlpha < 1.1) avisos.push({ nivell: 'avis', text: `Grau de recobriment baix (ε_α = ${epsilonAlpha.toFixed(3)}).` });
+  if (epsilonAlpha < 1) avisos.push({ nivell: 'error', text: `Grau de recobriment ε_α = ${dec3(epsilonAlpha)} < 1.` });
+  else if (epsilonAlpha < 1.1) avisos.push({ nivell: 'avis', text: `Grau de recobriment baix (ε_α = ${dec3(epsilonAlpha)}).` });
 
   return {
     entrada: { z1, z2, m, a, perfil, relacio, alpha },
@@ -456,6 +459,10 @@ export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha
     T1T2,
     epsilonAlpha,
     jocFons: [a - ra1 - p2.df / 2, a - ra2 - p1.df / 2],
+    // lliscament específic als extrems del segment actiu (peu del pinyó a A, peu de la roda a E);
+    // sense sentit si el contacte surt de T1–T2 (interferència)
+    zeta1A: gA > 0 ? 1 - ((T1T2 - gA) * z1) / (gA * z2) : NaN,
+    zeta2E: gE < T1T2 ? 1 - (gE * z2) / ((T1T2 - gE) * z1) : NaN,
     avisos,
   };
 }

@@ -307,3 +307,22 @@ test("contacte: el punt cau sobre la involuta motora del pinyó i sobre la de la
     aprop(vistos / 50, p.epsilonAlpha, 0.05, 'ε_α');
   }
 });
+
+test('lliscament als extrems: coincideix amb la corba i es reequilibra amb el repartiment', () => {
+  const p = calcularParella({ z1: 17, z2: 40, m: 2, a: 58 });
+  const d = lliscamentEspecific(p, 100);
+  aprop(p.zeta1A, d.zeta1[0], 1e-12, 'ζ1 a A');
+  aprop(p.zeta2E, d.zeta2[d.zeta2.length - 1], 1e-12, 'ζ2 a E');
+  assert.ok(p.zeta1A < 0 && p.zeta2E < 0, 'als peus el lliscament és negatiu');
+  // més desplaçament al pinyó (s_b1 / s_b2 més gran) → baixa |ζ1 a A| i puja |ζ2 a E|
+  const q = calcularParella({ z1: 17, z2: 40, m: 2, a: 58, relacio: 1.3 });
+  assert.ok(q.rodes[0].x > p.rodes[0].x);
+  assert.ok(Math.abs(q.zeta1A) < Math.abs(p.zeta1A));
+  assert.ok(Math.abs(q.zeta2E) > Math.abs(p.zeta2E));
+});
+
+test('lliscament als extrems: sense valor si hi ha interferència', () => {
+  const p = calcularParella({ z1: 8, z2: 8, m: 1, a: 8, perfil: 'C' });
+  assert.ok(p.gA <= 0);
+  assert.ok(Number.isNaN(p.zeta1A));
+});

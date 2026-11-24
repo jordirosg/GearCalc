@@ -213,6 +213,31 @@ html, body {
   cursor: pointer;
 }
 
+.plegable > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.plegable > summary::-webkit-details-marker { display: none; }
+.plegable > summary::before {
+  content: "▸";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 10px; /* alineat amb el h2 */
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.plegable[open] > summary::before { transform: rotate(90deg); }
+.plegable > summary h2 { display: inline; }
+
 .graella {
   display: grid;
   grid-template-columns: 1fr 1fr;

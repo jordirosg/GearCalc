@@ -12,6 +12,7 @@ const PER_DEFECTE = { z1: 17, z2: 40, m: 2, a: 58, perfil: 'A', relacioLog: 0, v
 const fmt = (dec) => new Intl.NumberFormat('ca-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const f3 = fmt(3).format;
 const f4 = fmt(4).format;
+const fZeta = (v) => (Number.isFinite(v) ? fmt(3).format(v) : '—'); // '—' si hi ha interferència
 
 // ---------------------------------------------------------------- estat
 let dades = { ...PER_DEFECTE };
@@ -97,6 +98,8 @@ function recalcular({ encaixar = false } = {}) {
     generacions = parella.rodes.map((rw) => prepararGeneracio(rw));
     pintarResultats();
     actualitzarGraficLliscament(grafic, lliscamentEspecific(parella));
+    $('extrems-lliscament').textContent =
+      `ζ₁ a A = ${fZeta(parella.zeta1A)} · ζ₂ a E = ${fZeta(parella.zeta2E)}`;
     mostrarEstatParella();
     if (encaixar) encaixarTot();
   } catch (err) {
@@ -149,6 +152,8 @@ function pintarResultats() {
     ['k · m (mm)', f4(parella.k * parella.entrada.m), AJUDA.k],
     ['ε_α', f3(parella.epsilonAlpha), AJUDA.epsilonAlpha],
     ['Joc de fons c (mm)', f3(parella.jocFons[0]), AJUDA.jocFons],
+    ['ζ₁ a A (peu del pinyó)', fZeta(parella.zeta1A), AJUDA.zeta1A],
+    ['ζ₂ a E (peu de la roda)', fZeta(parella.zeta2E), AJUDA.zeta2E],
   ];
   $('taula-parella').innerHTML = filesParella
     .map(([n, v, ajuda]) => `<tr><td>${etiqueta(n, ajuda)}</td><td>${v}</td></tr>`)
@@ -185,6 +190,8 @@ const AJUDA = {
   k: "Escurçament de cap (k · m ≤ 0). Retalla el diàmetre de cap perquè el joc de fons continuï valent c_P quan a ≠ a₀.",
   epsilonAlpha: "Grau de recobriment: nombre mitjà de parells de dents en contacte. Ha de ser > 1; recomanable ≥ 1,1–1,2.",
   jocFons: "Separació radial entre el cap d'una roda i el fons de l'altra. Ha de coincidir amb c_P de la cremallera (0,25 m; 0,40 m al perfil D).",
+  zeta1A: "Lliscament específic del pinyó a l'inici del contacte (A), al seu peu: el valor més desfavorable del pinyó. Convé que |ζ₁ a A| i |ζ₂ a E| siguin semblants; es reparteixen amb el lliscador s_b1 / s_b2.",
+  zeta2E: "Lliscament específic de la roda al final del contacte (E), al seu peu: el valor més desfavorable de la roda. Si |ζ₁ a A| és més gran, dona més desplaçament al pinyó (x₁ més gran).",
   z: 'Nombre de dents.',
   x: "Coeficient de desplaçament del perfil: quant s'aparta la cremallera en tallar, en múltiples de m. Positiu = cap enfora: dent més gruixuda al peu i més punxeguda al cap.",
   xMin: "Desplaçament mínim perquè el cap arrodonit de la cremallera no soscavi el peu de la dent. Si x < x_min, hi ha soscavament.",
@@ -252,6 +259,17 @@ for (const [id, capa] of [['veure-primitives', 'primitives'], ['veure-base', 'ba
 }
 
 // ---------------------------------------------------------------- calaix
+// bloc Resultats plegable; l'estat es recorda en aquest navegador
+const CLAU_UI = 'gearcalc.ui';
+try {
+  const ui = JSON.parse(localStorage.getItem(CLAU_UI) || '{}');
+  if (ui.resultatsOberts === false) $('bloc-resultats').open = false;
+} catch { /* emmagatzematge no disponible */ }
+$('bloc-resultats').addEventListener('toggle', () => {
+  try {
+    localStorage.setItem(CLAU_UI, JSON.stringify({ resultatsOberts: $('bloc-resultats').open }));
+  } catch { /* sense emmagatzematge */ }
+});
 const calaix = $('calaix');
 function obrirCalaix(obrir) {
   calaix.classList.toggle('obert', obrir);

@@ -461,6 +461,44 @@ export function calcularParella({ z1, z2, m, a, perfil = 'A', relacio = 1, alpha
 }
 
 /**
+ * Línia d'acció activa amb el pinyó girant en sentit antihorari (motor).
+ * Sistema de la parella: centre del pinyó O1 = (0, a/2), centre de la roda O2 = (0, −a/2), Y amunt.
+ * El contacte avança de T1 cap a T2 amb la velocitat de la circumferència base del pinyó.
+ * Retorna T1, T2, el pol C, la direcció unitària dir (de T1 cap a T2) i punt(g) a distància g de T1.
+ */
+export function liniaAccio(parella) {
+  const a = parella.entrada.a;
+  const rw1 = parella.rodes[0].dw / 2;
+  const rw2 = parella.rodes[1].dw / 2;
+  const sa = Math.sin(parella.alphaW);
+  const ca = Math.cos(parella.alphaW);
+  const C = [0, a / 2 - rw1];
+  const dir = [ca, -sa];
+  const T1 = [C[0] - rw1 * sa * dir[0], C[1] - rw1 * sa * dir[1]];
+  const T2 = [C[0] + rw2 * sa * dir[0], C[1] + rw2 * sa * dir[1]];
+  const punt = (g) => [T1[0] + g * dir[0], T1[1] + g * dir[1]];
+  return { T1, T2, C, dir, punt };
+}
+
+/**
+ * Punts de contacte actius per a un gir θ del pinyó (antihorari; a θ = 0 la dent 0 apunta cap a la roda).
+ * La involuta de cada flanc motor talla la línia d'acció a g = r_b1 (β_b + α_w + θ + 2πk/z1),
+ * on β_b és el semiangle de la dent a la base. Només són contactes els que cauen dins [g_A, g_E].
+ * Retorna una llista de distàncies g des de T1 (mm).
+ */
+export function contactesActius(parella, theta) {
+  const p = parella.rodes[0];
+  const rb = p.db / 2;
+  const pb = (2 * Math.PI * rb) / p.z; // pas base
+  const betaB = p.s / p.d + inv(p.alpha);
+  const g0 = rb * (betaB + parella.alphaW + theta);
+  const { gA, gE } = parella;
+  const contactes = [];
+  for (let g = g0 + pb * Math.ceil((gA - g0) / pb - 1e-12); g <= gE + 1e-12; g += pb) contactes.push(g);
+  return contactes;
+}
+
+/**
  * Lliscament específic al llarg del segment d'engranament actiu.
  * g: distància des de T1 sobre la línia d'engranament (mm).
  */

@@ -17,6 +17,7 @@
   --eina: #7a5ad6;
   --eina-farciment: rgba(122, 90, 214, 0.12);
   --pinyo-brut: rgba(47, 111, 208, 0.32);
+  --contacte: #d11a6a;
   color-scheme: light;
 }
 
@@ -40,6 +41,7 @@
     --eina: #b39dff;
     --eina-farciment: rgba(179, 157, 255, 0.12);
     --pinyo-brut: rgba(110, 162, 255, 0.32);
+    --contacte: #ff5fa2;
     color-scheme: dark;
   }
 }
@@ -89,6 +91,27 @@ html, body {
 }
 .boto-flotant:active { transform: scale(0.96); }
 .boto-flotant[aria-pressed="true"] { background: var(--accent); color: var(--superficie); border-color: var(--accent); }
+
+.control-velocitat {
+  position: fixed;
+  left: 50%;
+  bottom: calc(38px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--superficie);
+  border: 1px solid var(--vora);
+  border-radius: 12px;
+  box-shadow: var(--ombra);
+  z-index: 5;
+}
+.control-velocitat[hidden] { display: none; }
+.control-velocitat label { flex-direction: row; gap: 6px; white-space: nowrap; color: var(--text); font-size: 13px; }
+.control-velocitat output { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3.5em; }
+.control-velocitat input[type="range"] { flex: 1; min-width: 0; height: 28px; }
 
 .estat {
   position: fixed;

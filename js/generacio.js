@@ -72,10 +72,28 @@ export function prepararGeneracio(roda, { pasPosicions = roda.m / 5 } = {}) {
   };
 }
 
-/** Angle de rodolament per a un temps d'animació t (s); el cicle es repeteix. */
-export function phiAnimacio(g, t) {
-  const tc = t % (g.duradaTall + DURADA_PAUSA);
-  return g.phiIni + (g.phiFiAnim - g.phiIni) * Math.min(1, tc / g.duradaTall);
+/**
+ * Fa avançar l'animació dt segons reals a la velocitat donada (1 = durada nominal).
+ * estat = { progres: 0..1 del tall, pausa: s ja esperats amb la peça acabada }.
+ * El progrés és una fracció, així que canviar la velocitat a mig tall no fa salts;
+ * la pausa final es compta en temps real.
+ */
+export function avancarAnimacio(g, estat, dt, velocitat) {
+  if (estat.progres < 1) {
+    estat.progres = Math.min(1, estat.progres + (dt * velocitat) / g.duradaTall);
+  } else {
+    estat.pausa += dt;
+    if (estat.pausa >= DURADA_PAUSA) {
+      estat.progres = 0;
+      estat.pausa = 0;
+    }
+  }
+  return estat;
+}
+
+/** Angle de rodolament corresponent a un progrés de l'animació (0..1). */
+export function phiAnimacio(g, progres) {
+  return g.phiIni + (g.phiFiAnim - g.phiIni) * Math.min(1, Math.max(0, progres));
 }
 
 /** Caixa (en mm) que conté la roda i la cremallera. */

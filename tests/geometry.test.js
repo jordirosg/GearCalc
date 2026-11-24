@@ -16,6 +16,8 @@ import {
   relacioDesplacamentsIguals,
   contornCremallera,
   finestraGeneracio,
+  liniaAccio,
+  contactesActius,
 } from '../js/geometry.js';
 
 const aprop = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg ?? ''} ${a} ≠ ${b} (tol ${tol})`);
@@ -265,5 +267,43 @@ test("finestra de generació: fora d'ella l'eina no toca la peça en brut", () =
     const s = Math.sin(phi);
     const rMin = Math.min(...dents.map(([u, v]) => Math.hypot((u + r * phi) * c - (r + v) * s, (u + r * phi) * s + (r + v) * c)));
     assert.ok(rMin >= ra - 1e-9, `φ=${phi}: rMin ${rMin} < ra ${ra}`);
+  }
+});
+
+test("contacte: el punt cau sobre la involuta motora del pinyó i sobre la de la roda", () => {
+  for (const cas of [{ z1: 17, z2: 40, m: 2, a: 58 }, { z1: 12, z2: 30, m: 2, a: 43, perfil: 'C', relacio: 0.89 }]) {
+    const p = calcularParella(cas);
+    const [P, W] = p.rodes;
+    const { punt } = liniaAccio(p);
+    const a = cas.a;
+    const pas1 = (2 * Math.PI) / P.z;
+    const pas2 = (2 * Math.PI) / W.z;
+    let vistos = 0;
+    for (let k = 0; k < 50; k++) {
+      const theta = (k / 50) * pas1 * 3;
+      for (const g of contactesActius(p, theta)) {
+        vistos++;
+        const [x, y] = punt(g);
+        // al sistema local del pinyó (dent 0 a +Y): desfer el gir π + θ
+        const f1 = -(Math.PI + theta);
+        const lx = x * Math.cos(f1) - (y - a / 2) * Math.sin(f1);
+        const ly = x * Math.sin(f1) + (y - a / 2) * Math.cos(f1);
+        const R1 = Math.hypot(lx, ly);
+        let b1 = Math.atan2(lx, ly);
+        b1 -= pas1 * Math.round(b1 / pas1);
+        aprop(Math.abs(b1), semiAngleEvolvent(R1, P), 1e-9, `pinyó θ=${theta}`);
+        // i a la roda (gir π/z2 − θ z1/z2)
+        const f2 = -(Math.PI / W.z - (theta * P.z) / W.z);
+        const mx = x * Math.cos(f2) - (y + a / 2) * Math.sin(f2);
+        const my = x * Math.sin(f2) + (y + a / 2) * Math.cos(f2);
+        const R2 = Math.hypot(mx, my);
+        let b2 = Math.atan2(mx, my);
+        b2 -= pas2 * Math.round(b2 / pas2);
+        aprop(Math.abs(b2), semiAngleEvolvent(R2, W), 1e-9, `roda θ=${theta}`);
+        assert.ok(g >= p.gA - 1e-9 && g <= p.gE + 1e-9);
+      }
+    }
+    // de mitjana hi ha ε_α parells en contacte
+    aprop(vistos / 50, p.epsilonAlpha, 0.05, 'ε_α');
   }
 });

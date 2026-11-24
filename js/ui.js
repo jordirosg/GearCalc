@@ -1,11 +1,13 @@
 // Interfície: calaix d'entrada, llenç a pantalla completa (pinyó a dalt, roda a baix).
-import { calcularParella, contornRoda, lliscamentEspecific, radAGraus, relacioDesplacamentsIguals } from './geometry.js';
+import {
+  calcularParella, contornRoda, lliscamentEspecific, radAGraus, relacioDesplacamentsIguals, liniaAccio, contactesActius,
+} from './geometry.js';
 import { crearGraficLliscament, actualitzarGraficLliscament } from './charts.js';
-import { prepararGeneracio, pintarGeneracio, phiAnimacio, caixaGeneracio } from './generacio.js';
+import { prepararGeneracio, pintarGeneracio, phiAnimacio, avancarAnimacio, caixaGeneracio } from './generacio.js';
 
 const $ = (id) => document.getElementById(id);
 const CLAU = 'gearcalc.v2';
-const PER_DEFECTE = { z1: 17, z2: 40, m: 2, a: 58, perfil: 'A', relacioLog: 0 };
+const PER_DEFECTE = { z1: 17, z2: 40, m: 2, a: 58, perfil: 'A', relacioLog: 0, velocitatLog: -2 };
 
 const fmt = (dec) => new Intl.NumberFormat('ca-ES', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const f3 = fmt(3).format;
@@ -24,12 +26,12 @@ let vista = { s: 1, ox: 0, oy: 0 };
 let theta = 0; // gir del pinyó (rad)
 let mode = 'engranament'; // 'engranament' | 'generacio'
 let generacio = null; // dades preparades per a la vista de generació del pinyó
-let tGeneracio = 0; // temps de l'animació de generació (s)
+const animGeneracio = { progres: 0, pausa: 0 }; // estat de l'animació de generació
 let animant = false;
 let darrerT = 0;
 let pendent = false;
 let colors = {};
-const capes = { primitives: true, base: true, linia: true };
+const capes = { primitives: true, base: true, linia: false };
 
 const llenc = $('llenc');
 const ctx = llenc.getContext('2d');
@@ -72,6 +74,7 @@ function llegirEntrades() {
     a: num(entrades.a),
     perfil: entrades.perfil.value,
     relacioLog: Number(entrades.relacio.value),
+    velocitatLog: Number($('velocitat').value),
   };
 }
 
@@ -273,6 +276,7 @@ function llegirColors() {
     eina: c('--eina'),
     einaFarciment: c('--eina-farciment'),
     pinyoBrut: c('--pinyo-brut'),
+    contacte: c('--contacte'),
   };
 }
 llegirColors();
@@ -373,10 +377,10 @@ function pintar(t) {
   ctx.setTransform(dpr * s, 0, 0, -dpr * s, dpr * ox, dpr * oy);
 
   if (mode === 'generacio') {
-    tGeneracio += dt;
+    avancarAnimacio(generacio, animGeneracio, dt, velocitat());
     pintarGeneracio(ctx, generacio, {
       animant,
-      phi: phiAnimacio(generacio, tGeneracio),
+      phi: phiAnimacio(generacio, animGeneracio.progres),
       px,
       pxPerMm: s * dpr,
       colors,
@@ -396,7 +400,7 @@ function pintar(t) {
     return;
   }
 
-  theta += dt * ((2 * Math.PI) / parella.entrada.z1 / 1.5);
+  theta += dt * velocitat() * ((2 * Math.PI) / parella.entrada.z1 / 1.5);
 
   const [p, r] = parella.rodes;
   const a = parella.entrada.a;
@@ -428,28 +432,32 @@ function pintar(t) {
   }
   ctx.setLineDash([]);
 
+  // línia d'acció: només la activa, el pinyó gira en sentit antihorari i és el motor
+  const la = liniaAccio(parella);
   if (capes.linia) {
-    const yC = y1 - rw1;
-    const sa = Math.sin(parella.alphaW);
-    const ca = Math.cos(parella.alphaW);
-    for (const sx of [1, -1]) {
-      const dx = sx * ca;
-      const dy = sa;
-      const T1 = [dx * rw1 * sa, yC + dy * rw1 * sa];
-      const T2 = [-dx * rw2 * sa, yC - dy * rw2 * sa];
-      const P = (g) => [T1[0] - g * dx, T1[1] - g * dy];
-      ctx.strokeStyle = colors.linia;
-      ctx.globalAlpha = 0.5;
-      ctx.lineWidth = px;
-      segment(T1, T2);
-      ctx.globalAlpha = 1;
-      ctx.lineWidth = 3 * px;
-      segment(P(parella.gA), P(parella.gE));
-    }
+    ctx.strokeStyle = colors.linia;
+    ctx.globalAlpha = 0.5;
+    ctx.lineWidth = px;
+    segment(la.T1, la.T2);
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1.8 * px;
+    segment(la.punt(parella.gA), la.punt(parella.gE));
     ctx.fillStyle = colors.linia;
     ctx.beginPath();
-    ctx.arc(0, yC, 3.5 * px, 0, 2 * Math.PI);
+    ctx.arc(la.C[0], la.C[1], 3.5 * px, 0, 2 * Math.PI);
     ctx.fill();
+  }
+
+  // punts de contacte sobre el flanc del pinyó: apareixen a A i desapareixen a E
+  ctx.fillStyle = colors.contacte;
+  ctx.strokeStyle = colors.fons;
+  ctx.lineWidth = 1.5 * px;
+  for (const g of contactesActius(parella, theta)) {
+    const [x, y] = la.punt(g);
+    ctx.beginPath();
+    ctx.arc(x, y, 4.5 * px, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.stroke();
   }
 
   // centres
@@ -539,11 +547,31 @@ $('btn-animar').addEventListener('click', () => {
   animant = !animant;
   darrerT = 0;
   $('btn-animar').textContent = animant ? '⏸' : '▶';
+  $('control-velocitat').hidden = !animant;
   dibuixar();
+});
+
+// ---------------------------------------------------------------- velocitat de l'animació
+// lliscador logarítmic: log2 del factor, de ×0,05 a ×2
+const velocitat = () => 2 ** Number($('velocitat').value);
+function mostrarVelocitat() {
+  $('velocitat-valor').textContent = `×${fmt(2).format(velocitat())}`;
+}
+$('velocitat').value = String(Number.isFinite(dades.velocitatLog) ? dades.velocitatLog : PER_DEFECTE.velocitatLog);
+mostrarVelocitat();
+$('velocitat').addEventListener('input', () => {
+  mostrarVelocitat();
+  dades.velocitatLog = Number($('velocitat').value);
+  desar();
+});
+$('btn-velocitat-1').addEventListener('click', () => {
+  $('velocitat').value = '0';
+  $('velocitat').dispatchEvent(new Event('input'));
 });
 $('btn-generacio').addEventListener('click', () => {
   mode = mode === 'generacio' ? 'engranament' : 'generacio';
-  tGeneracio = 0;
+  animGeneracio.progres = 0;
+  animGeneracio.pausa = 0;
   const actiu = mode === 'generacio';
   $('btn-generacio').setAttribute('aria-pressed', String(actiu));
   $('btn-engranament').title = actiu ? 'Ampliar el buit tallat' : "Ampliar la zona d'engranament";

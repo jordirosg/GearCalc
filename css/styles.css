@@ -14,8 +14,8 @@
   --error: #c62828;
   --avis: #b26a00;
   --ombra: 0 6px 24px rgba(0, 0, 0, 0.18);
-  --eina: #7a5ad6;
-  --eina-farciment: rgba(122, 90, 214, 0.12);
+  --eina: #52677d;
+  --eina-farciment: rgba(82, 103, 125, 0.16);
   --pinyo-brut: rgba(47, 111, 208, 0.32);
   --contacte: #d11a6a;
   color-scheme: light;
@@ -38,8 +38,8 @@
     --error: #ff6b6b;
     --avis: #f0b440;
     --ombra: 0 6px 24px rgba(0, 0, 0, 0.5);
-    --eina: #b39dff;
-    --eina-farciment: rgba(179, 157, 255, 0.12);
+    --eina: #a7b8ca;
+    --eina-farciment: rgba(167, 184, 202, 0.16);
     --pinyo-brut: rgba(110, 162, 255, 0.32);
     --contacte: #ff5fa2;
     color-scheme: dark;

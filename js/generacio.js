@@ -122,12 +122,14 @@ function ambEina(ctx, g, phi, accio) {
  * Un sol camí amb el ventall de l'eina per a les posicions donades, en el sistema de la roda
  * (molt més ràpid que traçar cada posició per separat).
  */
-function camiTraces(g, posicions, maxim = Infinity) {
+function camiTraces(g, posicions, { maxim = Infinity, seguirDent0 = false } = {}) {
   const traces = new Path2D();
   const pas = Math.max(1, Math.ceil(posicions.length / maxim));
   for (let i = posicions.length - 1; i >= 0; i -= pas) {
     const ph = posicions[i];
-    const mat = new DOMMatrix().rotateSelf((ph * 180) / Math.PI).translateSelf(desplacamentEina(g, ph), g.r);
+    // seguirDent0: l'avanç real r·φ, perquè el ventall quedi al voltant del buit que talla la dent 0
+    const avanc = seguirDent0 ? g.r * ph : desplacamentEina(g, ph);
+    const mat = new DOMMatrix().rotateSelf((ph * 180) / Math.PI).translateSelf(avanc, g.r);
     traces.addPath(g.camiVentall, mat);
   }
   return traces;
@@ -191,7 +193,7 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, cam
     ctx.strokeStyle = colors.eina;
     ctx.globalAlpha = 0.35;
     ctx.lineWidth = px;
-    g.tracesVentall = g.tracesVentall || camiTraces(g, g.posicions);
+    g.tracesVentall = g.tracesVentall || camiTraces(g, g.posicions, { seguirDent0: true });
     ctx.stroke(g.tracesVentall);
     ctx.globalAlpha = 1;
     ctx.strokeStyle = colors.pinyo;
@@ -215,7 +217,7 @@ export function pintarGeneracio(ctx, g, { animant, phi, px, pxPerMm, colors, cam
     ctx.lineWidth = px;
     const desDe = phi - (g.phiFi - g.phiIni);
     const recents = g.posicionsAnim.filter((ph) => ph <= phi && ph >= desDe);
-    if (recents.length) ctx.stroke(camiTraces(g, recents, 40));
+    if (recents.length) ctx.stroke(camiTraces(g, recents, { maxim: 40 }));
     ctx.globalAlpha = 1;
     // perfil final, com a referència (traç continu i suau: el discontinu és car amb molts punts)
     ctx.strokeStyle = colors.pinyo;
